@@ -1,0 +1,73 @@
+@startuml ParallelSaga-Complete
+title Parallel Saga Pattern - Ordering como Front Orchestrator
+actor Cliente
+participant Ordering
+participant Payment
+participant Restaurant
+participant Delivery
+participant EventBus as Bus
+
+== 1. Início ==
+Cliente -> Ordering: POST /orders
+Ordering -> Ordering: NewOrder(PENDING)
+Ordering -> Bus: OrderPlaced(orderId)
+
+== 2. Passo 1 - Pagamento ==
+Bus -> Payment: OrderPlaced
+Payment -> Payment: autoriza pagamento
+alt OK
+Payment -> Bus: PaymentAuthorized(orderId)
+else Falha
+Payment -> Bus: PaymentFailed(orderId)
+end
+
+== 3. Ordering coordena pagamento ==
+Bus -> Ordering: PaymentAuthorized
+Ordering -> Ordering: Order(PAID)
+Ordering -> Bus: OrderPaid(orderId)
+
+Bus -> Ordering: PaymentFailed
+Ordering -> Ordering: Order(CANCELLED)
+Ordering -> Bus: OrderCancelled(orderId)
+note right: Saga termina aqui
+
+== 4. Passo 2 - Restaurante ==
+Bus -> Restaurant: OrderPaid
+Restaurant -> Restaurant: cria RestaurantOrder(QUEUED)
+alt Aceita
+Restaurant -> Bus: RestaurantOrderAccepted(orderId)
+else Rejeita
+Restaurant -> Bus: RestaurantOrderRejected(orderId)
+end
+
+== 5. Ordering coordena restaurante ==
+Bus -> Ordering: RestaurantOrderAccepted
+Ordering -> Ordering: Order(CONFIRMED)
+Ordering -> Bus: OrderConfirmed(orderId)
+
+Bus -> Ordering: RestaurantOrderRejected
+Ordering -> Ordering: Order(CANCELLED)
+Ordering -> Bus: OrderCancelled(orderId)
+note right: Saga termina aqui
+
+== 6. Passo 3 - Delivery ==
+Bus -> Delivery: OrderConfirmed
+Delivery -> Delivery: cria e atribui Delivery
+Delivery -> Bus: DeliveryDelivered(orderId)
+
+== 7. Ordering finaliza saga ==
+Bus -> Ordering: DeliveryDelivered
+Ordering -> Ordering: Order(DELIVERED)
+Ordering -> Cliente: 201 Created (orderId)
+
+== 8. Compensações paralelas ==
+note over Bus: Exemplo: Delivery falha após Restaurant OK
+Bus -> Delivery: OrderConfirmed
+alt Delivery falha
+Delivery -> Bus: DeliveryFailed(orderId)
+Bus -> Ordering: DeliveryFailed
+Ordering -> Ordering: Order(FAILED)
+Ordering -> Bus: OrderFailed(orderId)
+note right: Payment pode ser notificado para\nrefund parcial
+end
+@enduml

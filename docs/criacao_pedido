@@ -1,0 +1,96 @@
+@startuml
+!theme plain
+skinparam sequenceMessageAlign center
+skinparam sequenceParticipant underline
+skinparam sequenceArrowThickness 2
+
+participant Cliente
+participant "Ordering\nContext" as Ordering
+participant "Catalog\nContext" as Catalog
+participant "Payment\nContext" as Payment
+participant "Restaurant\nContext" as Restaurant
+participant "Delivery\nContext" as Delivery
+
+== 1. Criação do Pedido ==
+Cliente -> Ordering: POST /orders
+activate Ordering
+Ordering -> Catalog: Validar restaurante/itens
+activate Catalog
+Catalog --> Ordering: OK (snapshot de preços)
+deactivate Catalog
+Ordering -> Ordering: NewOrder(PENDING)
+Ordering -> Ordering: OrderPlaced [outbox]
+Ordering -> Payment: OrderPlaced (evento)
+
+== 2. Autorização de Pagamento ==
+activate Payment
+Payment -> Payment: NewPayment(INITIATED)
+Payment -> Gateway: authorize()
+Gateway --> Payment: approved
+Payment -> Payment: Authorize(externalId)
+Payment -> Payment: PaymentAuthorized [outbox]
+Payment -> Ordering: PaymentAuthorized (evento)
+deactivate Payment
+
+== 3. Pagamento aprovado ==
+Ordering -> Ordering: MarkAsPaid()
+Ordering -> Ordering: OrderPaid [outbox]
+Ordering -> Restaurant: OrderPaid (evento)
+
+== 4. Restaurante aceita ==
+activate Restaurant
+Restaurant -> Restaurant: NewRestaurantOrder(QUEUED)
+Restaurant -> Restaurant: Accept()
+Restaurant -> Restaurant: RestaurantOrderAccepted [outbox]
+Restaurant -> Ordering: RestaurantOrderAccepted (evento)
+deactivate Restaurant
+
+== 5. Pedido confirmado ==
+Ordering -> Ordering: Confirm()
+Ordering -> Ordering: OrderConfirmed [outbox]
+Ordering -> Delivery: OrderConfirmed (evento)
+
+== 6. Delivery atribuída e concluída ==
+activate Delivery
+Delivery -> Delivery: NewDelivery(ASSIGNED)
+Delivery -> Courier: Assign()
+Courier --> Delivery: courierId
+Delivery -> Delivery: DeliveryAssigned [outbox]
+Delivery -> Cliente: "Entregador atribuído"
+Delivery -> Delivery: MarkPickedUp() → ON_ROUTE
+Delivery -> Delivery: MarkDelivered()
+Delivery -> Delivery: DeliveryDelivered [outbox]
+Delivery -> Ordering: DeliveryDelivered (evento)
+deactivate Delivery
+
+== 7. Pedido finalizado ==
+Ordering -> Ordering: MarkAsDelivered()
+Ordering -> Ordering: OrderDelivered [outbox]
+Ordering -> Cliente: "Pedido entregue!"
+deactivate Ordering
+
+== COMPENSAÇÕES (erros) ==
+
+note over Cliente,Ordering: **ERRO: PaymentFailed**
+Payment -> Payment: Fail(reason)
+Payment -> Ordering: PaymentFailed
+Ordering -> Ordering: Cancel("PAYMENT_FAILED")
+Ordering -> Ordering: OrderCancelled [outbox]
+note right: Saga termina
+
+note over Ordering,Restaurant: **ERRO: RestaurantOrderRejected**
+Restaurant -> Restaurant: Reject(reason)
+Restaurant -> Ordering: RestaurantOrderRejected
+Ordering -> Ordering: Cancel("RESTAURANT_REJECTED")
+Ordering -> Payment: RefundPayment (comando)
+Payment -> Payment: Refund()
+Payment -> Payment: PaymentRefunded
+note right: Compensação completa
+
+note over Delivery,Ordering: **ERRO: DeliveryFailed**
+Delivery -> Delivery: MarkFailed(reason)
+Delivery -> Ordering: DeliveryStatusChanged(FAILED)
+Ordering -> Ordering: MarkFailed("DELIVERY_FAILED")
+Ordering -> Payment: RefundPayment (parcial)
+note right: Política de reembolso parcial
+@enduml

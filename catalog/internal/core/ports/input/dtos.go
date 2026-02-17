@@ -1,0 +1,90 @@
+package input
+
+type CreateMenuRequest struct {
+	Name string `json:"name" binding:"required"`
+}
+
+type AddCategoryRequest struct {
+	Name string `json:"name" binding:"required"`
+}
+
+type AddItemRequest struct {
+	Name        string `json:"name" binding:"required"`
+	Description string `json:"description" binding:"required"`
+	PriceCents  int64  `json:"price_cents" binding:"required,gt=0"`
+}
+
+type CreateRestaurantRequest struct {
+	Name    string         `json:"name" binding:"required"`
+	Address AddressRequest `json:"address" binding:"required"`
+}
+
+type UpdateItemRequest struct {
+	PriceCents int64  `json:"price_cents" binding:"required,gt=0"`
+	Status     string `json:"status" binding:"required"`
+}
+
+type AddressRequest struct {
+	Street       string `json:"street" binding:"required"`
+	Number       string `json:"number" binding:"required"`
+	Complement   string `json:"complement"`
+	Neighborhood string `json:"neighborhood" binding:"required"`
+	City         string `json:"city" binding:"required"`
+	State        string `json:"state" binding:"required"`
+	ZipCode      string `json:"zip_code" binding:"required"`
+}
+
+type MenuResponse struct {
+	ID           string              `json:"id"`
+	Name         string              `json:"name"`
+	RestaurantID string              `json:"restaurant_id"`
+	Status       string              `json:"status"`
+	Categories   []*CategoryResponse `json:"categories"`
+}
+
+type RestaurantResponse struct {
+	ID           string          `json:"id"`
+	Name         string          `json:"name"`
+	Address      AddressResponse `json:"address"`
+	Status       string          `json:"status"`
+	ActiveMenuID string          `json:"active_menu_id,omitempty"`
+}
+
+type AddressResponse struct {
+	Street       string `json:"street"`
+	Number       string `json:"number"`
+	Complement   string `json:"complement,omitempty"`
+	Neighborhood string `json:"neighborhood"`
+	City         string `json:"city"`
+	State        string `json:"state"`
+	ZipCode      string `json:"zip_code"`
+}
+
+type CategoryResponse struct {
+	ID    string          `json:"id"`
+	Name  string          `json:"name"`
+	Items []*ItemResponse `json:"items"`
+}
+
+type ItemResponse struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	PriceCents  int64  `json:"price_cents"`
+	Status      string `json:"status"`
+}
+
+type ValidateOrderRequest struct {
+	RestaurantID string   `json:"restaurant_id"`
+	ItemIDs      []string `json:"item_ids"`
+}
+type ValidateOrderResponse struct {
+	Valid            bool           `json:"valid"`
+	ValidationErrors []string       `json:"validation_errors"`
+	Items            []ItemSnapshot `json:"items"`
+}
+type ItemSnapshot struct {
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	PriceCents int64  `json:"price_cents"`
+}

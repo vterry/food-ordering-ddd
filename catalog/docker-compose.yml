@@ -1,0 +1,18 @@
+services:
+  db:
+    image: mysql/mysql-server:latest
+    container_name: catalog-db
+    restart: always
+    environment:
+      - MYSQL_DATABASE=catalog-db
+      - MYSQL_ROOT_PASSWORD=mysqlroot
+      - MYSQL_ROOT_HOST=%
+    ports:
+      - '3306:3306'
+    networks:
+      - db
+networks:
+  local_network:
+    driver: bridge
+  db:
+    driver: bridge
