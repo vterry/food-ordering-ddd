@@ -1,50 +1,13 @@
 # Catalog Domain - TODO
 
-> Última atualização: 2026-02-14
+> Última atualização: 2026-02-17
 > Ref. arquitetural: `docs/ARCHITECTURE.md`
 
 ---
 
-## 🔴 Fase 1: Infraestrutura Local & Persistência
+## 🚧 Backlog de Implementação (Pendente)
 
-### Ambiente de Desenvolvimento
-
-- [x] Configurar `docker-compose.yml` para MySQL dedicado ao Catalog
-- [x] Definir variáveis de ambiente (`.env`) e Config (via Environment)
-- [x] Criar Makefile para gestão de containers (`up`, `down`, `logs`) e Migrations
-
-### Migrations (MySQL)
-
-- [x] Configurar ferramenta de migração (`golang-migrate`)
-- [x] Criar migration inicial (`restaurants`, `menus`, `categories`, `items`, `outbox_events`)
-- [x] Definir schema relacional com Surrogate Keys e UUIDs:
-  - `restaurants` (id PK, uuid UNIQUE, dados flatten, status, active_menu_uuid)
-  - `menus` (id PK, uuid UNIQUE, restaurant_id UUID, status)
-  - `categories` (id PK, uuid UNIQUE, menu_id FK CASCADE)
-  - `items` (id PK, uuid UNIQUE, category_id FK CASCADE, price_cents)
-  - `outbox_events` (id PK, uuid UNIQUE, payload JSON)
-
-### Repositories (Adapters)
-
-- [x] Implementar `RestaurantRepositoryMySQL`
-- [x] Implementar `MenuRepositoryMySQL`
-- [x] Implementar `OutboxRepositoryMySQL`
-- [x] Testes de Integração com Testcontainers (ou banco local)
-
----
-
-## 🟠 Fase 2: API & Wiring (Administrative - Sync)
-
-### HTTP Handlers (net/http Standard Lib)
-
-- [x] Mapear rotas de Restaurante (`POST /`, `GET /:id`, `PATCH /:id/open`, `PATCH /:id/close`)
-- [x] Mapear rota de Storefront (`GET /restaurants/:id/active-menu` - Menu Ativo com Itens)
-- [x] Mapear rotas de Menu (`POST /`, `PATCH /activate`)
-- [x] Wire up: Injeção de dependência no `main.go` e `server.go`
-- [x] Graceful Shutdown
-
-### Quality Assurance (API & Integration)
-
+### 🟠 Fase 2: Quality Assurance & Integration
 - [ ] Implementar Testes de Unidade para Handlers (Mocking Service)
 - [ ] Implementar Testes de Integração (E2E) para Fluxo Completo:
   - Criar Restaurante -> Criar Menu -> Adicionar Itens -> Ativar -> Buscar Ativo
@@ -52,119 +15,94 @@
   - Graceful Shutdown com requisições em andamento (drain)
   - Startup Lento/Timeouts (NotifyReady channel)
 
----
-
-## 🟠 Fase 2: Domain Events Enrichment (Foundation)
-
-### Event-Carried State Transfer (Fat Events)
-- [x] Refatorar eventos para incluir payload completo (evitar callbacks do consumidor):
-  - [x] `ItemMenuCreated`: Adicionar Name, Price, CategoryID
-  - [x] `MenuActivated`: Adicionar RestaurantID, list of ItemIDs (snapshot)
-  - [x] `RestaurantCreated`: Adicionar Address, Status
-  - [x] `ItemPriceChanged`: Adicionar OldPrice, NewPrice
-- [x] Atualizar `OutboxRepository` para serializar novos payloads
-- [x] Atualizar Testes de Unidade afetados
-
----
-
-## 🟡 Fase 3: gRPC Server & Internal API (Sync Validation)
-
-### gRPC Service Definition
-- [x] Definir `catalog_service.proto`:
-  - `CheckRestaurantOpen(restaurantID)`
-  - `GetItemDetails(itemIDs)` (Batch retrieval para snapshot de preços)
-- [x] Gerar stubs Go (`protoc-gen-go`)
-- [x] Criar adaptadores: `GrpcMetadataService` (implementa a interface definida no proto)
-
-### Implementação do Server
-- [x] Implementar métodos gRPC chamando os UseCases/Services existentes
-- [x] Configurar servidor gRPC no `main.go` (porta separada ou cmux)
+### 🟡 Fase 3: gRPC Server (Finalização)
 - [ ] Adicionar Health Checks gRPC
 
----
-
-## 🟡 Fase 3: Messaging (Outbound)
-
-### Publisher Infrastructure
+### 🟡 Fase 3: Messaging (Outbound)
 - [ ] Implementar `EventPublisher` (RabbitMQ/Kafka)
 - [ ] Worker de polling para tabela `outbox`
-- [ ] Garantir "At-Least-Once delivery"
+- [ ] Garantir "At-Least-Once delivery" (Idempotency keys no consumidor)
 
----
-
-## 🔵 Fase 4: Deployment (Kubernetes & Istio)
-
-### Containerização
-
+### 🔵 Fase 4: Deployment (Kubernetes & Istio)
 - [ ] Criar `Dockerfile` (Multi-stage build: builder + runner distroless/alpine)
 - [ ] Configurar `.dockerignore`
-- [ ] Pipeline de CI/CD (GitHub Actions) para build e push da imagem
-
-### Kubernetes Manifests (k8s/)
-
-- [ ] `Deployment`: Configurar réplicas, resources (requests/limits) e probes
-- [ ] `Service`: Expor aplicação internamente (ClusterIP)
-- [ ] `ConfigMap`: Gerenciar configurações de ambiente
-- [ ] `Secret`: Gerenciar credenciais sensíveis (DB, Broker)
-
-### Istio Configuration
-
-- [ ] `Gateway`: Configurar entrada de tráfego no mesh
-- [ ] `VirtualService`: Definir roteamento, retries e timeouts
-- [ ] `DestinationRule`: Configurar políticas de tráfego (Load Balancing, Connection Pool)
-- [ ] `PeerAuthentication`: Configurar mTLS (modo STRICT ou PERMISSIVE)
+- [ ] Pipeline de CI/CD (GitHub Actions)
+- [ ] Kubernetes Manifests (`Deployment`, `Service`, `ConfigMap`, `Secret`)
+- [ ] Istio Configuration (`Gateway`, `VirtualService`, `DestinationRule`, `PeerAuthentication`)
 
 ---
 
-## 🟢 Concluído
+## 🛠 Débitos Técnicos & Refatoração (Prioridade Alta)
 
-### Domain Layer
+### Code Review & Clean Architecture
+- [ ] **Camada Anti-Corrupção (Input Parsing)**:
+  - *Problema:* `MenuAppService` recebe strings e faz parsing para VOs. Adapters (`utils.go`) importam domínio diretamente.
+  - *Solução:* Mover parsing para o Handler. Remover imports de domínio em `adapters/input/rest`.
+- [ ] **Error Handling Refactoring**:
+  - *Problema:* `handleAppError` acopla HTTP Status com Erros de Domínio.
+  - *Solução:* Criar estratégia de mapeamento de erros agnóstica (Middleware ou Mapper).
+- [ ] **Validação de DTOs**:
+  - *Problema:* Tags `binding` (Gin) usadas com `go-playground/validator`.
+  - *Solução:* Substituir por tags `validate`.
+- [ ] **Violações da Lei de Demeter**:
+  - *Problema:* Acesso a campos embeddados (ex: `restaurant.RestaurantID.ID().String()`).
+  - *Solução:* Usar method promotion (`restaurant.String()`). Afeta Mappers, Events e Repositories.
+- [ ] **Rollback Redundante**:
+  - *Problema:* `UnitOfWork` chama `Rollback` explicitamente além do `defer`.
+  - *Solução:* Remover chamada explícita.
 
-- [x] Restaurant Aggregate completo
-- [x] Menu Aggregate completo
-- [x] Category Entity
-- [x] ItemMenu Entity
-- [x] Value Objects (Address, IDs) - Imutáveis e encapsulados
-- [x] Domain Events (Fat Events)
-- [x] Specifications (validações)
-- [x] Domain Service (`MenuAssignmentService`) - Lógica no domínio
+### Domínio & Regras de Negócio
+- [ ] **Domain Logic Leak**:
+  - *Problema:* `validateSingleItem` no Service contém regras de negócio.
+  - *Solução:* Mover para `Menu.ValidateItems(...)`.
+- [ ] **Invariante de Agregado (Restaurant)**:
+  - *Problema:* `Restaurant.UpdateMenu` não valida ownership do menu.
+  - *Solução:* Adicionar validação.
+- [ ] **Erros Silenciados em Repositórios**:
+  - *Problema:* Erros de parsing (`ParseMenuStatus`, `ParseUUID`) ignorados no scan do banco.
+  - *Solução:* Tratar e propagar erros de corrupção de dados.
+- [ ] **Side-Effect em Category.AddItem**:
+  - *Problema:* `PullEvent` chamado em cópia de valor/struct.
+  - *Solução:* Revisar lógica de eventos em coleções.
 
-### Application Layer
+### Observações Menores
+- [ ] Renomear `handleAddMenuCategorie` para `handleAddCategory` (typo).
+- [ ] Renomear `restauntIdStr` para `restaurantIdStr` (typo).
+- [ ] Remover variável global `Validate` em `utils.go`.
+- [ ] Adicionar contexto de request nos logs de erro interno.
 
-- [x] Mappers Otimizados (sem alocações extras)
-- [x] `MenuAppService` implementado
-- [x] `RestaurantAppService` com Inversão de Dependência (`MenuAssigner`)
-- [x] Interfaces `Input Ports` definidas
+---
 
-### Testes Unitários (Cobertura > 95%)
+## ✅ Tarefas Concluídas
 
-- [x] Domain/Menu (95.7%)
-- [x] Domain/Restaurant (100%)
-- [x] Domain/Services (100%)
-- [x] Correção de bugs em ValueObjects (`Address`)
-- [x] Validação de regras de negócio complexas
-- [x] Application/MenuService (Cenários de Sucesso e Rollback)
+### Infraestrutura & Base
+- [x] Configurar `docker-compose.yml` (MySQL)
+- [x] Variáveis de ambiente e Config
+- [x] Makefile (`up`, `down`, `logs`, `migrations`)
+- [x] Migrations (`golang-migrate`) com Schema Relacional (Surrogate Keys + UUIDs)
+- [x] Repositórios MySQL (`Restaurant`, `Menu`, `Outbox`) com Testcontainers
 
-### Testes de Integração (Repositories)
+### Domínio (Core)
+- [x] Agregados: `Restaurant` e `Menu` completos
+- [x] Entidades: `Category`, `ItemMenu`
+- [x] Value Objects: `Address`, `IDs`, `Money` (Imutáveis)
+- [x] Domain Events (Fat Events: `ItemMenuCreated`, `MenuActivated`, etc.)
+- [x] Specifications Pattern
+- [x] Domain Services (`MenuAssignmentService`)
 
-- [x] OutboxRepository: FindUnpublishedEvents, MarkAsPublished
-- [x] MenuRepository: Save, FindByRestaurantId
-- [x] RestaurantRepository: Save, FindById, FindAll
-- [x] Testcontainers + table-driven tests
+### Aplicação & API
+- [x] `MenuAppService` e `RestaurantAppService`
+- [x] Handlers HTTP (REST) mapeados
+- [x] Server wiring e Graceful Shutdown
+- [x] gRPC Service Definition (`.proto`) e Server Implementation
+- [x] Unit of Work Pattern
+- [x] Testes Unitários (> 95% cobertura de domínio)
 
-### Refatoração Arquitetural
-
-- [x] Remoção de dependências de framework (`uuid`) no domínio
-- [x] Definição de interface no consumidor (`MenuAssigner` no app layer)
-- [x] Ajuste de contratos DTO/Domain (consistência de campos)
-- [x] Implementação do padrão Unit of Work para consistência entre agregados
-
-### Decisões Arquiteturais
-
-- [x] Saga Pattern: Fairy Tale + Orchestrated Compensations (Hybrid)
-- [x] Catalog interfaces: Sync (REST/gRPC for CRUD + validation), Async (Outbox events)
-- [x] Knowledge base criada em `docs/ARCHITECTURE.md`
-
-### Technical Debt / Refactoring
-
-- [ ] Error Handling: Refatorar `handleAppError` para usar arquitetura limpa (App Errors na camada de aplicação vs. Domain Errors), removendo o acoplamento do REST com o Domínio.
+### Refatorações (Realizadas)
+- [x] Remoção de dependências de framework no domínio
+- [x] Saga Pattern: Fairy Tale + Orchestrated Compensations (Decisão)
+- [x] Outbox Pattern foundation
+- [x] Violação de Demeter em `Menu` -> `Category` corrigida
+- [x] Vazamento de Transação em `UnitOfWork` corrigido
+- [x] Status Codes HTTP corrigidos
+- [x] Mapeamento de erros de domínio para 422

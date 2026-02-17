@@ -9,7 +9,6 @@
 | **Payment**    | Handles payment authorization, refunds                     | 🔴 Not Started |
 | **Restaurant** | Accepts/rejects orders from restaurant perspective         | 🔴 Not Started |
 | **Delivery**   | Assigns couriers, tracks delivery                          | 🔴 Not Started |
-| **Kitchen**    | Manages ticket issuance and preparation                    | 🟡 In Progress |
 
 ---
 
