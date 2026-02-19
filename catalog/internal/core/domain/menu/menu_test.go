@@ -83,7 +83,7 @@ func TestMenu_Activate(t *testing.T) {
 				m, _ := NewMenu("MyMenu", valueobjects.NewRestaurantID())
 				cat, _ := NewCategory("Drinks")
 				item, _ := NewItemMenu("Suco", "Suco natural", common.NewMoneyFromCents(500))
-				_, _ = cat.AddItem(*item)
+				_ = cat.AddItem(*item)
 				_ = m.AddCategory(*cat)
 				return m
 			},
@@ -95,7 +95,7 @@ func TestMenu_Activate(t *testing.T) {
 				m, _ := NewMenu("MyMenu", valueobjects.NewRestaurantID())
 				cat, _ := NewCategory("Drinks")
 				item, _ := NewItemMenu("Suco", "Suco natural", common.NewMoneyFromCents(500))
-				_, _ = cat.AddItem(*item)
+				_ = cat.AddItem(*item)
 				_ = m.AddCategory(*cat)
 				_ = m.Activate()
 				return m
@@ -146,7 +146,7 @@ func TestMenu_Archive(t *testing.T) {
 				m, _ := NewMenu("MyMenu", valueobjects.NewRestaurantID())
 				cat, _ := NewCategory("Drinks")
 				item, _ := NewItemMenu("Suco", "Suco natural", common.NewMoneyFromCents(500))
-				_, _ = cat.AddItem(*item)
+				_ = cat.AddItem(*item)
 				_ = m.AddCategory(*cat)
 				_ = m.Activate()
 				return m
@@ -205,7 +205,7 @@ func TestMenu_AddCategory(t *testing.T) {
 		m, _ := NewMenu("MyMenu", valueobjects.NewRestaurantID())
 		cat, _ := NewCategory("Drinks")
 		item, _ := NewItemMenu("Suco", "Suco natural", common.NewMoneyFromCents(500))
-		_, _ = cat.AddItem(*item)
+		_ = cat.AddItem(*item)
 		_ = m.AddCategory(*cat)
 		_ = m.Activate()
 
@@ -255,7 +255,7 @@ func TestMenu_RemoveCategory(t *testing.T) {
 		m, _ := NewMenu("MyMenu", valueobjects.NewRestaurantID())
 		cat, _ := NewCategory("Drinks")
 		item, _ := NewItemMenu("Suco", "Suco natural", common.NewMoneyFromCents(500))
-		_, _ = cat.AddItem(*item)
+		_ = cat.AddItem(*item)
 		_ = m.AddCategory(*cat)
 		_ = m.Activate()
 
@@ -317,7 +317,7 @@ func TestMenu_AddItemToCategory(t *testing.T) {
 		m, _ := NewMenu("MyMenu", valueobjects.NewRestaurantID())
 		cat, _ := NewCategory("Drinks")
 		item, _ := NewItemMenu("Suco", "Suco natural", common.NewMoneyFromCents(500))
-		_, _ = cat.AddItem(*item)
+		_ = cat.AddItem(*item)
 		_ = m.AddCategory(*cat)
 		_ = m.Activate()
 
@@ -333,7 +333,7 @@ func TestMenu_RemoveItemFromCategory(t *testing.T) {
 		m, _ := NewMenu("MyMenu", valueobjects.NewRestaurantID())
 		cat, _ := NewCategory("Drinks")
 		item, _ := NewItemMenu("Suco", "Suco natural", common.NewMoneyFromCents(500))
-		_, _ = cat.AddItem(*item)
+		_ = cat.AddItem(*item)
 		_ = m.AddCategory(*cat)
 
 		err := m.RemoveItemFromCategory(cat.CategoryID, *item)
@@ -347,7 +347,7 @@ func TestMenu_RemoveItemFromCategory(t *testing.T) {
 		m, _ := NewMenu("MyMenu", valueobjects.NewRestaurantID())
 		cat, _ := NewCategory("Drinks")
 		item, _ := NewItemMenu("Suco", "Suco natural", common.NewMoneyFromCents(500))
-		_, _ = cat.AddItem(*item)
+		_ = cat.AddItem(*item)
 		_ = m.AddCategory(*cat)
 		_ = m.Activate()
 
@@ -362,7 +362,7 @@ func TestMenu_UpdateItemPrice(t *testing.T) {
 		m, _ := NewMenu("MyMenu", valueobjects.NewRestaurantID())
 		cat, _ := NewCategory("Drinks")
 		item, _ := NewItemMenu("Suco", "Suco natural", common.NewMoneyFromCents(500))
-		_, _ = cat.AddItem(*item)
+		_ = cat.AddItem(*item)
 		_ = m.AddCategory(*cat)
 
 		newPrice := common.NewMoneyFromCents(750)
@@ -378,7 +378,7 @@ func TestMenu_UpdateItemPrice(t *testing.T) {
 		m, _ := NewMenu("MyMenu", valueobjects.NewRestaurantID())
 		cat, _ := NewCategory("Drinks")
 		item, _ := NewItemMenu("Suco", "Suco natural", common.NewMoneyFromCents(500))
-		_, _ = cat.AddItem(*item)
+		_ = cat.AddItem(*item)
 		_ = m.AddCategory(*cat)
 
 		err := m.UpdateItemPrice(cat.CategoryID, item.ItemID, common.Zero)
@@ -400,7 +400,7 @@ func TestMenu_UpdateItemAvailability(t *testing.T) {
 		m, _ := NewMenu("MyMenu", valueobjects.NewRestaurantID())
 		cat, _ := NewCategory("Drinks")
 		item, _ := NewItemMenu("Suco", "Suco natural", common.NewMoneyFromCents(500))
-		_, _ = cat.AddItem(*item)
+		_ = cat.AddItem(*item)
 		_ = m.AddCategory(*cat)
 		return m, cat, item
 	}

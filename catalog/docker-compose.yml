@@ -2,7 +2,7 @@ services:
   db:
     image: mysql/mysql-server:latest
     container_name: catalog-db
-    restart: always
+    restart: no
     environment:
       - MYSQL_DATABASE=catalog-db
       - MYSQL_ROOT_PASSWORD=mysqlroot

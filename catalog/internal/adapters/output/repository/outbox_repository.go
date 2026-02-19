@@ -3,10 +3,13 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/vterry/food-ordering/catalog/internal/adapters/output/repository/dao"
 	"github.com/vterry/food-ordering/catalog/internal/core/ports/output"
+	common "github.com/vterry/food-ordering/common/pkg"
 )
 
 var _ output.OutboxRepository = (*OutboxRepository)(nil)
@@ -17,6 +20,31 @@ type OutboxRepository struct {
 
 func NewOutboxRepository(db *sql.DB) *OutboxRepository {
 	return &OutboxRepository{db: db}
+}
+
+func (o *OutboxRepository) SaveEvents(ctx context.Context, aggregateID, aggregateType string, events []common.DomainEvent) error {
+	executor := getExecutor(ctx, o.db)
+
+	for _, event := range events {
+		payload, err := json.Marshal(event)
+		if err != nil {
+			return fmt.Errorf("failed to marshal event %s: %w", event.EventName(), err)
+		}
+
+		_, err = executor.ExecContext(ctx, QueryInsertOutboxEvent,
+			event.EventID().String(),
+			aggregateID,
+			aggregateType,
+			event.EventName(),
+			payload,
+			event.OccurredOn(),
+		)
+		if err != nil {
+			return fmt.Errorf("failed to save outbox event %s: %w", event.EventName(), err)
+		}
+	}
+
+	return nil
 }
 
 func (o *OutboxRepository) FindUnpublishedEvents(ctx context.Context, limit int) ([]output.OutboxEvent, error) {

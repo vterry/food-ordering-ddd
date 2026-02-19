@@ -71,7 +71,7 @@ func ParseItemStatus(s string) (ItemStatus, error) {
 }
 
 func (s RestaurantStatus) String() string {
-	return [...]string{"OPEN", "CLOSE"}[s]
+	return [...]string{"OPEN", "CLOSED"}[s]
 }
 func (s RestaurantStatus) IsValid() bool {
 	return s >= RestaurantOpened && s <= RestaurantClosed
@@ -81,7 +81,7 @@ func ParseRestaurantStatus(s string) (RestaurantStatus, error) {
 	switch strings.ToUpper(s) {
 	case "OPEN":
 		return RestaurantOpened, nil
-	case "CLOSE":
+	case "CLOSED":
 		return RestaurantClosed, nil
 	default:
 		return RestaurantClosed, fmt.Errorf("invalid restaurant status: %s", s)

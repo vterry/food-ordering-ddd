@@ -78,7 +78,7 @@ func GetLastEventPayload(t *testing.T, db *sql.DB, aggregateId string) map[strin
 }
 
 func insertRestaurant(t *testing.T, restaurant *restaurant.Restaurant) {
-	restRepo := NewRestaurantRepository(testDB)
+	restRepo := NewRestaurantRepository(testDB, NewOutboxRepository(testDB))
 	err := restRepo.Save(context.Background(), restaurant)
 	require.NoError(t, err)
 }

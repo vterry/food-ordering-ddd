@@ -24,7 +24,7 @@ func createActiveMenu(restaurantID valueobjects.RestaurantID) *menu.Menu {
 	m, _ := menu.NewMenu("MyMenu", restaurantID)
 	cat, _ := menu.NewCategory("Drinks")
 	item, _ := menu.NewItemMenu("Suco", "Suco natural", common.NewMoneyFromCents(500))
-	_, _ = cat.AddItem(*item)
+	_ = cat.AddItem(*item)
 	_ = m.AddCategory(*cat)
 	_ = m.Activate()
 	return m

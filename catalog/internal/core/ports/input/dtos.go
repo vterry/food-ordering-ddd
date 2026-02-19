@@ -1,37 +1,37 @@
 package input
 
 type CreateMenuRequest struct {
-	Name string `json:"name" binding:"required"`
+	Name string `json:"name" validate:"required"`
 }
 
 type AddCategoryRequest struct {
-	Name string `json:"name" binding:"required"`
+	Name string `json:"name" validate:"required"`
 }
 
 type AddItemRequest struct {
-	Name        string `json:"name" binding:"required"`
-	Description string `json:"description" binding:"required"`
-	PriceCents  int64  `json:"price_cents" binding:"required,gt=0"`
+	Name        string `json:"name" validate:"required"`
+	Description string `json:"description" validate:"required"`
+	PriceCents  int64  `json:"price_cents" validate:"required,gt=0"`
 }
 
 type CreateRestaurantRequest struct {
-	Name    string         `json:"name" binding:"required"`
-	Address AddressRequest `json:"address" binding:"required"`
+	Name    string         `json:"name" validate:"required"`
+	Address AddressRequest `json:"address" validate:"required"`
 }
 
 type UpdateItemRequest struct {
-	PriceCents int64  `json:"price_cents" binding:"required,gt=0"`
-	Status     string `json:"status" binding:"required"`
+	PriceCents int64  `json:"price_cents" validate:"required,gt=0"`
+	Status     string `json:"status" validate:"required"`
 }
 
 type AddressRequest struct {
-	Street       string `json:"street" binding:"required"`
-	Number       string `json:"number" binding:"required"`
+	Street       string `json:"street" validate:"required"`
+	Number       string `json:"number" validate:"required"`
 	Complement   string `json:"complement"`
-	Neighborhood string `json:"neighborhood" binding:"required"`
-	City         string `json:"city" binding:"required"`
-	State        string `json:"state" binding:"required"`
-	ZipCode      string `json:"zip_code" binding:"required"`
+	Neighborhood string `json:"neighborhood" validate:"required"`
+	City         string `json:"city" validate:"required"`
+	State        string `json:"state" validate:"required"`
+	ZipCode      string `json:"zip_code" validate:"required"`
 }
 
 type MenuResponse struct {

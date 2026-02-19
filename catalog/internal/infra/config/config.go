@@ -26,7 +26,7 @@ func NewConfig() *Config {
 	}
 	return &Config{
 		HttpListener: getEnv("HTTP_PORT", ":8080"),
-		GrpcListener: getEnv("GRPC_PORT", "9090"),
+		GrpcListener: getEnv("GRPC_PORT", ":9090"),
 		Db: DbConfig{
 			User:     getEnv("DB_USER", "root"),
 			Password: getEnv("DB_PASS", "root"),
@@ -43,12 +43,3 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
-func getEnvInt(key string, fallback int) int {
-	if value, ok := os.LookupEnv(key); ok {
-		var i int
-		if _, err := fmt.Sscanf(value, "%d", &i); err == nil {
-			return i
-		}
-	}
-	return fallback
-}

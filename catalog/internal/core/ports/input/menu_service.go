@@ -1,15 +1,19 @@
 package input
 
-import "context"
+import (
+	"context"
+
+	"github.com/vterry/food-ordering/catalog/internal/core/domain/valueobjects"
+)
 
 type MenuService interface {
-	CreateMenu(ctx context.Context, restIdstr string, req CreateMenuRequest) (*MenuResponse, error)
-	GetMenu(ctx context.Context, menuIdstr string) (*MenuResponse, error)
-	GetActiveMenu(ctx context.Context, restaurantIdStr string) (*MenuResponse, error)
-	ActiveMenu(ctx context.Context, menuIdstr string) error
-	ArchiveMenu(ctx context.Context, menuIdstr string) error
-	AddCategory(ctx context.Context, menuIdstr string, req AddCategoryRequest) error
-	AddItemToCategory(ctx context.Context, menuIdstr, categoryIdstr string, req AddItemRequest) error
-	UpdateItem(ctx context.Context, menuIdStr, categoryIdStr, itemIdStr string, req UpdateItemRequest) error
+	CreateMenu(ctx context.Context, restId valueobjects.RestaurantID, req CreateMenuRequest) (*MenuResponse, error)
+	GetMenu(ctx context.Context, menuId valueobjects.MenuID) (*MenuResponse, error)
+	GetActiveMenu(ctx context.Context, restId valueobjects.RestaurantID) (*MenuResponse, error)
+	ActiveMenu(ctx context.Context, menuId valueobjects.MenuID) error
+	ArchiveMenu(ctx context.Context, menuId valueobjects.MenuID) error
+	AddCategory(ctx context.Context, menuId valueobjects.MenuID, req AddCategoryRequest) error
+	AddItemToCategory(ctx context.Context, menuId valueobjects.MenuID, categoryId valueobjects.CategoryID, req AddItemRequest) error
+	UpdateItem(ctx context.Context, menuId valueobjects.MenuID, categoryId valueobjects.CategoryID, itemId valueobjects.ItemID, req UpdateItemRequest) error
 	ValidateOrder(ctx context.Context, req ValidateOrderRequest) (*ValidateOrderResponse, error)
 }

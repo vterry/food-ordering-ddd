@@ -12,7 +12,6 @@ type ItemMenu struct {
 	description string
 	basePrice   common.Money
 	status      enums.ItemStatus
-	events      []common.DomainEvent
 }
 
 func NewItemMenu(name, description string, price common.Money) (*ItemMenu, error) {
@@ -28,32 +27,19 @@ func NewItemMenu(name, description string, price common.Money) (*ItemMenu, error
 		basePrice:   price,
 		status:      enums.ItemAvailable,
 	}
-
-	event := NewItemMenuCreated(item.ItemID, item.name, item.basePrice)
-	item.AddEvent(event)
-
 	return item, nil
 }
 
 func (i *ItemMenu) MarkAvailable() {
-	oldStatus := i.status
 	i.status = enums.ItemAvailable
-	event := NewItemMenuAvailabilityChanged(i.ItemID, oldStatus, i.status)
-	i.AddEvent(event)
 }
 
 func (i *ItemMenu) MarkUnavailable() {
-	oldStatus := i.status
 	i.status = enums.ItemUnavailable
-	event := NewItemMenuAvailabilityChanged(i.ItemID, oldStatus, i.status)
-	i.AddEvent(event)
 }
 
 func (i *ItemMenu) MarkTemporarilyUnavailable() {
-	oldStatus := i.status
 	i.status = enums.ItemTempUnavailable
-	event := NewItemMenuAvailabilityChanged(i.ItemID, oldStatus, i.status)
-	i.AddEvent(event)
 }
 
 func (i *ItemMenu) UpdatePrice(price common.Money) error {
@@ -61,11 +47,7 @@ func (i *ItemMenu) UpdatePrice(price common.Money) error {
 	if err := ValidateItemPrice(price); err != nil {
 		return err
 	}
-	oldPrice := i.basePrice
 	i.basePrice = price
-
-	event := NewItemMenuPriceChanged(i.ItemID, oldPrice, i.basePrice)
-	i.AddEvent(event)
 
 	return nil
 }
@@ -76,8 +58,6 @@ func (i *ItemMenu) UpdateName(name string) error {
 	}
 
 	i.name = name
-	event := NewItemMenuNameChanged(i.ItemID, name)
-	i.AddEvent(event)
 
 	return nil
 }
@@ -89,8 +69,6 @@ func (i *ItemMenu) UpdateDescription(description string) error {
 	}
 
 	i.description = description
-	event := NewItemMenuDescriptionChanged(i.ItemID)
-	i.AddEvent(event)
 
 	return nil
 }
@@ -99,16 +77,6 @@ func (i *ItemMenu) Name() string             { return i.name }
 func (i *ItemMenu) Description() string      { return i.description }
 func (i *ItemMenu) BasePrice() common.Money  { return i.basePrice }
 func (i *ItemMenu) Status() enums.ItemStatus { return i.status }
-
-func (i *ItemMenu) AddEvent(event common.DomainEvent) {
-	i.events = append(i.events, event)
-}
-
-func (i *ItemMenu) PullEvent() []common.DomainEvent {
-	events := i.events
-	i.events = nil
-	return events
-}
 
 func RestoreItemMenu(
 	itemId valueobjects.ItemID,
@@ -121,6 +89,5 @@ func RestoreItemMenu(
 		description: description,
 		basePrice:   basePrice,
 		status:      status,
-		events:      []common.DomainEvent{},
 	}
 }

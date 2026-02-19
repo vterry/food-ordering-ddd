@@ -11,11 +11,11 @@ func toRestaurantResponse(restaurant *restaurant.Restaurant) *input.RestaurantRe
 	addressResponse := parseAddress(restaurant.Address())
 
 	return &input.RestaurantResponse{
-		ID:           restaurant.RestaurantID.ID().String(),
+		ID:           restaurant.RestaurantID.String(),
 		Name:         restaurant.Name(),
 		Address:      *addressResponse,
 		Status:       restaurant.Status().String(),
-		ActiveMenuID: restaurant.ActiveMenuID().ID().String(),
+		ActiveMenuID: restaurant.ActiveMenuID().String(),
 	}
 }
 
@@ -29,9 +29,9 @@ func toMenuResponse(menu *menu.Menu) *input.MenuResponse {
 	}
 
 	return &input.MenuResponse{
-		ID:           menu.MenuID.ID().String(),
+		ID:           menu.MenuID.String(),
 		Name:         menu.Name(),
-		RestaurantID: menu.RestaurantID().ID().String(),
+		RestaurantID: menu.RestaurantID().String(),
 		Status:       menu.Status().String(),
 		Categories:   categoriesResponse,
 	}
@@ -59,7 +59,7 @@ func parseCategories(category *menu.Category) *input.CategoryResponse {
 	}
 
 	return &input.CategoryResponse{
-		ID:    category.ID().String(),
+		ID:    category.CategoryID.String(),
 		Name:  category.Name(),
 		Items: itemsResponse,
 	}
@@ -67,7 +67,7 @@ func parseCategories(category *menu.Category) *input.CategoryResponse {
 
 func parseItemResponse(item menu.ItemMenu) *input.ItemResponse {
 	return &input.ItemResponse{
-		ID:          item.ItemID.ID().String(),
+		ID:          item.ItemID.String(),
 		Name:        item.Name(),
 		Description: item.Description(),
 		PriceCents:  item.BasePrice().Amount(),

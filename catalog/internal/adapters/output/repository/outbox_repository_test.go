@@ -176,6 +176,7 @@ func seedUnpublishedEvent(t *testing.T, uuid, aggId, aggType, eventType string, 
 
 func seedPublishedEvent(t *testing.T, uuid, aggId, aggType, eventType string, payload []byte) {
 	t.Helper()
-	_, err := testDB.ExecContext(context.Background(), QueryInsertPublishedEvent, uuid, aggId, aggType, eventType, payload, time.Now(), time.Now())
+	const q = `INSERT INTO outbox_events (uuid, aggregate_id, aggregate_type, type, payload, occurred_on, published_at) VALUES (?,?,?,?,?,?,?)`
+	_, err := testDB.ExecContext(context.Background(), q, uuid, aggId, aggType, eventType, payload, time.Now(), time.Now())
 	require.NoError(t, err)
 }

@@ -57,9 +57,11 @@ func (m *Menu) Activate() error {
 	if m.status == enums.MenuActive {
 		return ErrAlreadyActive
 	}
+
+	m.status = enums.MenuActive
 	event := NewMenuActivated(*m)
 	m.AddEvent(event)
-	m.status = enums.MenuActive
+
 	return nil
 }
 
@@ -68,9 +70,11 @@ func (m *Menu) Archive() error {
 		return ErrAlreadyArchived
 	}
 
+	m.status = enums.MenuArchived
+
 	event := NewMenuArchived(m.MenuID)
 	m.AddEvent(event)
-	m.status = enums.MenuArchived
+
 	return nil
 }
 
@@ -97,7 +101,10 @@ func (m *Menu) RemoveCategory(categoryId valueobjects.CategoryID) error {
 	}
 	for i := range m.categories {
 		if m.categories[i].CategoryID.Equals(categoryId) {
+			removed := m.categories[i]
 			m.categories = append(m.categories[:i], m.categories[i+1:]...)
+			event := NewMenuCategoryRemoved(removed)
+			m.AddEvent(event)
 			return nil
 		}
 	}
@@ -124,18 +131,17 @@ func (m *Menu) AddItemToCategory(categoryId valueobjects.CategoryID, item ItemMe
 
 	for i := range m.categories {
 		if m.categories[i].CategoryID.Equals(categoryId) {
-			events, err := m.categories[i].AddItem(item)
+			err := m.categories[i].AddItem(item)
 			if err != nil {
 				return err
 			}
 
-			m.AddEvent(events...)
-
-			event := NewItemAddedToCategory(m.categories[i].CategoryID, item)
+			event := NewItemMenuCreated(m.categories[i].CategoryID, item)
 			m.AddEvent(event)
 			return nil
 		}
 	}
+
 	return ErrCategoryNotFound
 }
 
@@ -158,7 +164,55 @@ func (m *Menu) RemoveItemFromCategory(categoryId valueobjects.CategoryID, item I
 		return err
 	}
 
-	return category.RemoveItem(item.ItemID)
+	if err := category.RemoveItem(item.ItemID); err != nil {
+		return err
+	}
+
+	event := NewItemMenuRemoved(categoryId, item)
+	m.AddEvent(event)
+
+	return nil
+}
+
+func (m *Menu) UpdateItemName(categoryId valueobjects.CategoryID, itemId valueobjects.ItemID, newName string) error {
+	category, err := m.GetCategory(categoryId)
+	if err != nil {
+		return err
+	}
+
+	itemRef, err := category.GetItem(itemId)
+	if err != nil {
+		return err
+	}
+
+	oldName := itemRef.Name()
+
+	if err := itemRef.UpdateName(newName); err != nil {
+		return err
+	}
+
+	event := NewItemMenuNameChanged(categoryId, itemId, oldName, newName)
+	m.AddEvent(event)
+
+	return nil
+}
+
+func (m *Menu) UpdateItemDescription(categoryId valueobjects.CategoryID, itemId valueobjects.ItemID, newDesc string) error {
+	category, err := m.GetCategory(categoryId)
+	if err != nil {
+		return err
+	}
+
+	itemRef, err := category.GetItem(itemId)
+	if err != nil {
+		return err
+	}
+
+	if err := itemRef.UpdateDescription(newDesc); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (m *Menu) UpdateItemPrice(categoryId valueobjects.CategoryID, itemId valueobjects.ItemID, price common.Money) error {
@@ -171,13 +225,15 @@ func (m *Menu) UpdateItemPrice(categoryId valueobjects.CategoryID, itemId valueo
 	if err != nil {
 		return err
 	}
+
+	oldPrice := itemRef.BasePrice()
+
 	if err := itemRef.UpdatePrice(price); err != nil {
 		return err
 	}
 
-	for _, event := range itemRef.PullEvent() {
-		m.AddEvent(event)
-	}
+	event := NewItemMenuPriceChanged(categoryId, itemId, oldPrice, price)
+	m.AddEvent(event)
 
 	return nil
 }
@@ -193,6 +249,8 @@ func (m *Menu) UpdateItemAvailability(categoryId valueobjects.CategoryID, itemId
 		return err
 	}
 
+	oldStatus := itemRef.Status()
+
 	switch status {
 	case enums.ItemAvailable:
 		itemRef.MarkAvailable()
@@ -204,9 +262,8 @@ func (m *Menu) UpdateItemAvailability(categoryId valueobjects.CategoryID, itemId
 		return ErrInvalidItemStatus
 	}
 
-	for _, event := range itemRef.PullEvent() {
-		m.AddEvent(event)
-	}
+	event := NewItemMenuAvailabilityChanged(categoryId, itemId, oldStatus, status)
+	m.AddEvent(event)
 
 	return nil
 }
@@ -238,6 +295,31 @@ func (m *Menu) PullEvent() []common.DomainEvent {
 	events := m.events
 	m.events = nil
 	return events
+}
+
+// ItemValidationResult holds the outcome of validating a single item in the menu.
+type ItemValidationResult struct {
+	Item  *ItemMenu // non-nil when validation passes
+	Error string    // non-empty when validation fails
+}
+
+// ValidateItems checks each itemID against the active menu: existence and availability.
+// Parsing of external IDs is the caller's responsibility.
+func (m *Menu) ValidateItems(itemIDs []valueobjects.ItemID) []ItemValidationResult {
+	results := make([]ItemValidationResult, 0, len(itemIDs))
+	for _, id := range itemIDs {
+		item, found := m.FindItem(id)
+		if !found {
+			results = append(results, ItemValidationResult{Error: "item " + id.String() + " not found in active menu"})
+			continue
+		}
+		if item.Status() != enums.ItemAvailable {
+			results = append(results, ItemValidationResult{Error: "item " + item.Name() + " is not available"})
+			continue
+		}
+		results = append(results, ItemValidationResult{Item: item})
+	}
+	return results
 }
 
 func (m *Menu) hasItems() bool {

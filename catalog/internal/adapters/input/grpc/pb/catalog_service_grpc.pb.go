@@ -26,7 +26,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type CatalogServiceClient interface {
-	ValidateRestaurantAndItems(ctx context.Context, in *ValidateRestaurantAndItemsRequest, opts ...grpc.CallOption) (*ValidateRestauranteAndItemsRespose, error)
+	ValidateRestaurantAndItems(ctx context.Context, in *ValidateRestaurantAndItemsRequest, opts ...grpc.CallOption) (*ValidateRestaurantAndItemsResponse, error)
 }
 
 type catalogServiceClient struct {
@@ -37,9 +37,9 @@ func NewCatalogServiceClient(cc grpc.ClientConnInterface) CatalogServiceClient {
 	return &catalogServiceClient{cc}
 }
 
-func (c *catalogServiceClient) ValidateRestaurantAndItems(ctx context.Context, in *ValidateRestaurantAndItemsRequest, opts ...grpc.CallOption) (*ValidateRestauranteAndItemsRespose, error) {
+func (c *catalogServiceClient) ValidateRestaurantAndItems(ctx context.Context, in *ValidateRestaurantAndItemsRequest, opts ...grpc.CallOption) (*ValidateRestaurantAndItemsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ValidateRestauranteAndItemsRespose)
+	out := new(ValidateRestaurantAndItemsResponse)
 	err := c.cc.Invoke(ctx, CatalogService_ValidateRestaurantAndItems_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -51,7 +51,7 @@ func (c *catalogServiceClient) ValidateRestaurantAndItems(ctx context.Context, i
 // All implementations must embed UnimplementedCatalogServiceServer
 // for forward compatibility.
 type CatalogServiceServer interface {
-	ValidateRestaurantAndItems(context.Context, *ValidateRestaurantAndItemsRequest) (*ValidateRestauranteAndItemsRespose, error)
+	ValidateRestaurantAndItems(context.Context, *ValidateRestaurantAndItemsRequest) (*ValidateRestaurantAndItemsResponse, error)
 	mustEmbedUnimplementedCatalogServiceServer()
 }
 
@@ -62,7 +62,7 @@ type CatalogServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedCatalogServiceServer struct{}
 
-func (UnimplementedCatalogServiceServer) ValidateRestaurantAndItems(context.Context, *ValidateRestaurantAndItemsRequest) (*ValidateRestauranteAndItemsRespose, error) {
+func (UnimplementedCatalogServiceServer) ValidateRestaurantAndItems(context.Context, *ValidateRestaurantAndItemsRequest) (*ValidateRestaurantAndItemsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ValidateRestaurantAndItems not implemented")
 }
 func (UnimplementedCatalogServiceServer) mustEmbedUnimplementedCatalogServiceServer() {}

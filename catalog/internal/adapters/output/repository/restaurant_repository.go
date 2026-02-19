@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 
 	"github.com/vterry/food-ordering/catalog/internal/adapters/output/repository/dao"
@@ -16,11 +15,12 @@ import (
 var _ output.RestaurantRepository = (*RestaurantRepository)(nil)
 
 type RestaurantRepository struct {
-	db *sql.DB
+	db     *sql.DB
+	outbox output.OutboxRepository
 }
 
-func NewRestaurantRepository(db *sql.DB) *RestaurantRepository {
-	return &RestaurantRepository{db: db}
+func NewRestaurantRepository(db *sql.DB, outbox output.OutboxRepository) *RestaurantRepository {
+	return &RestaurantRepository{db: db, outbox: outbox}
 }
 
 func (r *RestaurantRepository) Save(ctx context.Context, agg *restaurant.Restaurant) error {
@@ -36,7 +36,7 @@ func (r *RestaurantRepository) Save(ctx context.Context, agg *restaurant.Restaur
 
 	addr := agg.Address()
 	_, err := executor.ExecContext(ctx, QueryUpsertRestaurant,
-		agg.ID().String(),
+		agg.String(),
 		agg.Name(),
 		addr.Street(),
 		addr.Number(),
@@ -53,23 +53,8 @@ func (r *RestaurantRepository) Save(ctx context.Context, agg *restaurant.Restaur
 		return fmt.Errorf("failed to upsert restaurant: %w", err)
 	}
 
-	for _, event := range agg.PullEvent() {
-		payload, err := json.Marshal(event)
-		if err != nil {
-			return fmt.Errorf("failed to marshal event: %w", err)
-		}
-
-		_, err = executor.ExecContext(ctx, QueryInsertOutboxEvent,
-			event.EventID().String(),
-			agg.ID().String(),
-			"Restaurant",
-			event.EventName(),
-			payload,
-			event.OccurredOn())
-
-		if err != nil {
-			return fmt.Errorf("failed to save outbox event: %w", err)
-		}
+	if err := r.outbox.SaveEvents(ctx, agg.String(), "Restaurant", agg.PullEvent()); err != nil {
+		return err
 	}
 
 	return nil

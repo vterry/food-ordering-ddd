@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 
 	"github.com/vterry/food-ordering/catalog/internal/adapters/output/repository/dao"
@@ -17,18 +16,27 @@ import (
 var _ output.MenuRepository = (*MenuRepository)(nil)
 
 type MenuRepository struct {
-	db *sql.DB
+	db     *sql.DB
+	outbox output.OutboxRepository
 }
 
 type menuBasket struct {
 	Name         string
 	RestaurantID string
 	Status       enums.MenuStatus
-	Categories   map[string]*menu.Category
+	Categories   map[string]*categoryBasket
 }
 
-func NewMenuRepository(db *sql.DB) *MenuRepository {
-	return &MenuRepository{db: db}
+type categoryBasket struct {
+	Name  string
+	Items []menu.ItemMenu
+}
+
+func NewMenuRepository(db *sql.DB, outbotx output.OutboxRepository) *MenuRepository {
+	return &MenuRepository{
+		db:     db,
+		outbox: outbotx,
+	}
 }
 
 func (m *MenuRepository) Save(ctx context.Context, menuAgg *menu.Menu) error {
@@ -46,7 +54,7 @@ func (m *MenuRepository) Save(ctx context.Context, menuAgg *menu.Menu) error {
 	}
 
 	var menuDbId int64
-	err = executor.QueryRowContext(ctx, QueryGetMenuIDByUUID, menuAgg.ID().String()).Scan(&menuDbId)
+	err = executor.QueryRowContext(ctx, QueryGetMenuIDByUUID, menuAgg.String()).Scan(&menuDbId)
 	if err != nil {
 		return fmt.Errorf("failed to get menu db id: %w", err)
 	}
@@ -84,23 +92,8 @@ func (m *MenuRepository) Save(ctx context.Context, menuAgg *menu.Menu) error {
 		}
 	}
 
-	for _, event := range menuAgg.PullEvent() {
-		payload, err := json.Marshal(event)
-		if err != nil {
-			return fmt.Errorf("failed to marshal event: %w", err)
-		}
-
-		_, err = executor.ExecContext(ctx, QueryInsertOutboxEvent,
-			event.EventID().String(),
-			menuAgg.ID().String(),
-			"Menu",
-			event.EventName(),
-			payload,
-			event.OccurredOn())
-
-		if err != nil {
-			return fmt.Errorf("failed to save outbox event: %w", err)
-		}
+	if err := m.outbox.SaveEvents(ctx, menuAgg.String(), "Menu", menuAgg.PullEvent()); err != nil {
+		return err
 	}
 
 	return nil
@@ -148,7 +141,7 @@ func (m *MenuRepository) FindActiveMenuByRestaurantId(ctx context.Context, resta
 	}
 
 	if len(menus) == 0 {
-		return nil, output.ErrEntityNotFound
+		return nil, nil
 	}
 
 	return menus[0], nil
@@ -171,18 +164,27 @@ func scanMenuRows(rows *sql.Rows) ([]*menu.Menu, error) {
 		}
 
 		if _, exists := baskets[row.MenuUUID]; !exists {
-			menuStatus, _ := enums.ParseMenuStatus(row.MenuStatus)
+			menuStatus, err := enums.ParseMenuStatus(row.MenuStatus)
+			if err != nil {
+				return nil, fmt.Errorf("corrupted menu status %q for menu %s: %w", row.MenuStatus, row.MenuUUID, err)
+			}
 
 			baskets[row.MenuUUID] = &menuBasket{
 				Name:         row.MenuName,
 				RestaurantID: row.RestaurantID,
 				Status:       menuStatus,
-				Categories:   make(map[string]*menu.Category),
+				Categories:   make(map[string]*categoryBasket),
 			}
 			order = append(order, row.MenuUUID)
 		}
 
-		processChildren(row, baskets[row.MenuUUID].Categories)
+		if err := processChildren(row, baskets[row.MenuUUID].Categories); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	result := make([]*menu.Menu, 0, len(baskets))
@@ -190,45 +192,60 @@ func scanMenuRows(rows *sql.Rows) ([]*menu.Menu, error) {
 	for _, uuid := range order {
 		b := baskets[uuid]
 
-		finalCats := categoriesToSlice(b.Categories)
+		mID, err := valueobjects.ParseMenuId(uuid)
+		if err != nil {
+			return nil, fmt.Errorf("corrupted menu id %q: %w", uuid, err)
+		}
 
-		mID, _ := valueobjects.ParseMenuId(uuid)
-		rID, _ := valueobjects.ParseRestaurantId(b.RestaurantID)
-		menuObj := menu.Restore(mID, b.Name, rID, b.Status, finalCats)
+		rID, err := valueobjects.ParseRestaurantId(b.RestaurantID)
+		if err != nil {
+			return nil, fmt.Errorf("corrupted restaurant id %q: %w", b.RestaurantID, err)
+		}
+
+		categories := make([]menu.Category, 0, len(b.Categories))
+		for catUUID, cb := range b.Categories {
+			cid, err := valueobjects.ParseCategoryId(catUUID)
+			if err != nil {
+				return nil, fmt.Errorf("corrupted category id %q: %w", catUUID, err)
+			}
+			cat := menu.RestoreCategory(cid, cb.Name, cb.Items)
+			categories = append(categories, *cat)
+		}
+
+		menuObj := menu.Restore(mID, b.Name, rID, b.Status, categories)
 		result = append(result, menuObj)
 	}
 
 	return result, nil
 }
 
-func processChildren(row dao.MenuCompositeDAO, cats map[string]*menu.Category) {
-
+func processChildren(row dao.MenuCompositeDAO, cats map[string]*categoryBasket) error {
 	if row.CategoryUUID == nil {
-		return
+		return nil
 	}
 
 	catUUID := *row.CategoryUUID
 
 	if _, exists := cats[catUUID]; !exists {
-		cid, _ := valueobjects.ParseCategoryId(catUUID)
-		newCat := menu.RestoreCategory(cid, *row.CategoryName, nil)
-		cats[catUUID] = newCat
+		cats[catUUID] = &categoryBasket{Name: *row.CategoryName}
 	}
 
-	if row.ItemUUID != nil {
-		iid, _ := valueobjects.ParseItemId(*row.ItemUUID)
-		price := common.NewMoneyFromCents(*row.ItemPrice)
-		status, _ := enums.ParseItemStatus(*row.ItemStatus)
-
-		newItem := menu.RestoreItemMenu(iid, *row.ItemName, *row.ItemDesc, price, status)
-		cats[catUUID].AddItem(*newItem)
+	if row.ItemUUID == nil {
+		return nil
 	}
-}
 
-func categoriesToSlice(cats map[string]*menu.Category) []menu.Category {
-	result := make([]menu.Category, 0, len(cats))
-	for _, c := range cats {
-		result = append(result, *c)
+	iid, err := valueobjects.ParseItemId(*row.ItemUUID)
+	if err != nil {
+		return fmt.Errorf("corrupted item id %q: %w", *row.ItemUUID, err)
 	}
-	return result
+
+	status, err := enums.ParseItemStatus(*row.ItemStatus)
+	if err != nil {
+		return fmt.Errorf("corrupted item status %q for item %s: %w", *row.ItemStatus, *row.ItemUUID, err)
+	}
+
+	item := menu.RestoreItemMenu(iid, *row.ItemName, *row.ItemDesc, common.NewMoneyFromCents(*row.ItemPrice), status)
+	cats[catUUID].Items = append(cats[catUUID].Items, *item)
+
+	return nil
 }

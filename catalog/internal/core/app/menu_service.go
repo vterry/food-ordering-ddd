@@ -35,13 +35,9 @@ func NewMenuAppService(menuAssigner MenuAssigner, uow output.UnitOfWork, menuRep
 	}
 }
 
-func (m *MenuAppService) CreateMenu(ctx context.Context, restIdstr string, req input.CreateMenuRequest) (*input.MenuResponse, error) {
-	restId, err := valueobjects.ParseRestaurantId(restIdstr)
-	if err != nil {
-		return nil, err
-	}
+func (m *MenuAppService) CreateMenu(ctx context.Context, restId valueobjects.RestaurantID, req input.CreateMenuRequest) (*input.MenuResponse, error) {
 
-	_, err = m.restaurantRepository.FindById(ctx, restId)
+	_, err := m.restaurantRepository.FindById(ctx, restId)
 	if err != nil {
 		return nil, err
 	}
@@ -62,11 +58,7 @@ func (m *MenuAppService) CreateMenu(ctx context.Context, restIdstr string, req i
 	return toMenuResponse(menuAggregate), nil
 }
 
-func (m *MenuAppService) GetMenu(ctx context.Context, menuIdstr string) (*input.MenuResponse, error) {
-	menuId, err := valueobjects.ParseMenuId(menuIdstr)
-	if err != nil {
-		return nil, err
-	}
+func (m *MenuAppService) GetMenu(ctx context.Context, menuId valueobjects.MenuID) (*input.MenuResponse, error) {
 
 	menu, err := m.menuRepository.FindById(ctx, menuId)
 	if err != nil {
@@ -76,12 +68,7 @@ func (m *MenuAppService) GetMenu(ctx context.Context, menuIdstr string) (*input.
 	return toMenuResponse(menu), nil
 }
 
-func (m *MenuAppService) GetActiveMenu(ctx context.Context, restaurantIdStr string) (*input.MenuResponse, error) {
-
-	restaurantId, err := valueobjects.ParseRestaurantId(restaurantIdStr)
-	if err != nil {
-		return nil, err
-	}
+func (m *MenuAppService) GetActiveMenu(ctx context.Context, restaurantId valueobjects.RestaurantID) (*input.MenuResponse, error) {
 
 	menu, err := m.menuRepository.FindActiveMenuByRestaurantId(ctx, restaurantId)
 	if err != nil {
@@ -91,11 +78,7 @@ func (m *MenuAppService) GetActiveMenu(ctx context.Context, restaurantIdStr stri
 	return toMenuResponse(menu), nil
 }
 
-func (m *MenuAppService) ActiveMenu(ctx context.Context, menuIdstr string) error {
-	menuId, err := valueobjects.ParseMenuId(menuIdstr)
-	if err != nil {
-		return err
-	}
+func (m *MenuAppService) ActiveMenu(ctx context.Context, menuId valueobjects.MenuID) error {
 
 	menuAggregate, err := m.menuRepository.FindById(ctx, menuId)
 	if err != nil {
@@ -128,11 +111,7 @@ func (m *MenuAppService) ActiveMenu(ctx context.Context, menuIdstr string) error
 	})
 }
 
-func (m *MenuAppService) ArchiveMenu(ctx context.Context, menuIdstr string) error {
-	menuId, err := valueobjects.ParseMenuId(menuIdstr)
-	if err != nil {
-		return err
-	}
+func (m *MenuAppService) ArchiveMenu(ctx context.Context, menuId valueobjects.MenuID) error {
 
 	menuAggregate, err := m.menuRepository.FindById(ctx, menuId)
 	if err != nil {
@@ -148,11 +127,7 @@ func (m *MenuAppService) ArchiveMenu(ctx context.Context, menuIdstr string) erro
 	})
 }
 
-func (m *MenuAppService) AddCategory(ctx context.Context, menuIdstr string, req input.AddCategoryRequest) error {
-	menuId, err := valueobjects.ParseMenuId(menuIdstr)
-	if err != nil {
-		return err
-	}
+func (m *MenuAppService) AddCategory(ctx context.Context, menuId valueobjects.MenuID, req input.AddCategoryRequest) error {
 
 	menuObj, err := m.menuRepository.FindById(ctx, menuId)
 	if err != nil {
@@ -174,16 +149,7 @@ func (m *MenuAppService) AddCategory(ctx context.Context, menuIdstr string, req 
 	})
 }
 
-func (m *MenuAppService) AddItemToCategory(ctx context.Context, menuIdstr, categoryIdstr string, req input.AddItemRequest) error {
-	menuId, err := valueobjects.ParseMenuId(menuIdstr)
-	if err != nil {
-		return err
-	}
-
-	categoryId, err := valueobjects.ParseCategoryId(categoryIdstr)
-	if err != nil {
-		return err
-	}
+func (m *MenuAppService) AddItemToCategory(ctx context.Context, menuId valueobjects.MenuID, categoryId valueobjects.CategoryID, req input.AddItemRequest) error {
 
 	menuObj, err := m.menuRepository.FindById(ctx, menuId)
 	if err != nil {
@@ -205,22 +171,7 @@ func (m *MenuAppService) AddItemToCategory(ctx context.Context, menuIdstr, categ
 	})
 }
 
-func (m *MenuAppService) UpdateItem(ctx context.Context, menuIdStr, categoryIdStr, itemIdStr string, req input.UpdateItemRequest) error {
-	menuId, err := valueobjects.ParseMenuId(menuIdStr)
-	if err != nil {
-		return err
-	}
-
-	categoryId, err := valueobjects.ParseCategoryId(categoryIdStr)
-	if err != nil {
-		return err
-	}
-
-	itemId, err := valueobjects.ParseItemId(itemIdStr)
-	if err != nil {
-		return err
-	}
-
+func (m *MenuAppService) UpdateItem(ctx context.Context, menuId valueobjects.MenuID, categoryId valueobjects.CategoryID, itemId valueobjects.ItemID, req input.UpdateItemRequest) error {
 	menu, err := m.menuRepository.FindById(ctx, menuId)
 	if err != nil {
 		return err
@@ -249,54 +200,63 @@ func (m *MenuAppService) ValidateOrder(ctx context.Context, req input.ValidateOr
 	if err != nil {
 		return nil, err
 	}
+
+	rest, err := m.restaurantRepository.FindById(ctx, restId)
+	if err != nil {
+		return nil, err
+	}
+
+	if !rest.CanAcceptOrder() {
+		return &input.ValidateOrderResponse{
+			Valid:            false,
+			ValidationErrors: []string{"restaurant is closed or has no active menu"},
+		}, nil
+	}
+
 	activeMenu, err := m.menuRepository.FindActiveMenuByRestaurantId(ctx, restId)
 	if err != nil {
 		return nil, err
 	}
 	if activeMenu == nil {
+		// defensive: restaurant reports it can accept orders but no active menu found (data inconsistency)
 		return &input.ValidateOrderResponse{
 			Valid:            false,
-			ValidationErrors: []string{"Restaurant is closed or has no active menu"},
+			ValidationErrors: []string{"restaurant has no active menu"},
 		}, nil
 	}
+
 	return m.validateItems(activeMenu, req.ItemIDs)
 }
 
-func (m *MenuAppService) validateItems(menu *menu.Menu, itemIDs []string) (*input.ValidateOrderResponse, error) {
+func (m *MenuAppService) validateItems(activeMenu *menu.Menu, itemIDs []string) (*input.ValidateOrderResponse, error) {
 	response := &input.ValidateOrderResponse{
 		Valid: true,
 		Items: make([]input.ItemSnapshot, 0, len(itemIDs)),
 	}
-	var errors []string
+
+	parsedIDs := make([]valueobjects.ItemID, 0, len(itemIDs))
 	for _, idStr := range itemIDs {
-		if errStr := m.validateSingleItem(menu, idStr, &response.Items); errStr != "" {
+		id, err := valueobjects.ParseItemId(idStr)
+		if err != nil {
 			response.Valid = false
-			errors = append(errors, errStr)
+			response.ValidationErrors = append(response.ValidationErrors, fmt.Sprintf("invalid item ID format: %s", idStr))
+			continue
 		}
+		parsedIDs = append(parsedIDs, id)
 	}
 
-	response.ValidationErrors = errors
+	for _, result := range activeMenu.ValidateItems(parsedIDs) {
+		if result.Error != "" {
+			response.Valid = false
+			response.ValidationErrors = append(response.ValidationErrors, result.Error)
+			continue
+		}
+		response.Items = append(response.Items, input.ItemSnapshot{
+			ID:         result.Item.ItemID.String(),
+			Name:       result.Item.Name(),
+			PriceCents: result.Item.BasePrice().Amount(),
+		})
+	}
+
 	return response, nil
-}
-
-func (m *MenuAppService) validateSingleItem(menu *menu.Menu, idStr string, items *[]input.ItemSnapshot) string {
-	itemID, err := valueobjects.ParseItemId(idStr)
-	if err != nil {
-		return fmt.Sprintf("Invalid item ID format: %s", idStr)
-	}
-	item, found := menu.FindItem(itemID)
-	if !found {
-		return fmt.Sprintf("item %s not found in active menu", idStr)
-	}
-	if item.Status() != enums.ItemAvailable {
-		return fmt.Sprintf("item %s is not available", item.Name())
-	}
-
-	*items = append(*items, input.ItemSnapshot{
-		ID:         item.ItemID.String(),
-		Name:       item.Name(),
-		PriceCents: item.BasePrice().Amount(),
-	})
-
-	return ""
 }

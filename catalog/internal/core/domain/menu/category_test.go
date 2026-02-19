@@ -51,7 +51,7 @@ func TestCategory_AddItem(t *testing.T) {
 		cat, _ := NewCategory("Drinks")
 		item, _ := NewItemMenu("Suco", "Suco natural", common.NewMoneyFromCents(500))
 
-		_, err := cat.AddItem(*item)
+		err := cat.AddItem(*item)
 
 		require.NoError(t, err)
 		assert.Len(t, cat.Items(), 1)
@@ -61,9 +61,9 @@ func TestCategory_AddItem(t *testing.T) {
 	t.Run("add duplicate item returns error", func(t *testing.T) {
 		cat, _ := NewCategory("Drinks")
 		item, _ := NewItemMenu("Suco", "Suco natural", common.NewMoneyFromCents(500))
-		_, _ = cat.AddItem(*item)
+		_ = cat.AddItem(*item)
 
-		_, err := cat.AddItem(*item)
+		err := cat.AddItem(*item)
 
 		assert.ErrorIs(t, err, ErrItemAlreadyExist)
 	})
@@ -73,11 +73,11 @@ func TestCategory_AddItem(t *testing.T) {
 
 		for i := 0; i < MaxItemPerCategory; i++ {
 			item, _ := NewItemMenu("Item", "Desc do item", common.NewMoneyFromCents(100))
-			_, _ = cat.AddItem(*item)
+			_ = cat.AddItem(*item)
 		}
 
 		extraItem, _ := NewItemMenu("Extra", "Desc extra", common.NewMoneyFromCents(100))
-		_, err := cat.AddItem(*extraItem)
+		err := cat.AddItem(*extraItem)
 
 		assert.ErrorIs(t, err, ErrMaxItemsReached)
 		assert.Len(t, cat.Items(), MaxItemPerCategory)
@@ -88,7 +88,7 @@ func TestCategory_RemoveItem(t *testing.T) {
 	t.Run("remove existing item succeeds", func(t *testing.T) {
 		cat, _ := NewCategory("Drinks")
 		item, _ := NewItemMenu("Suco", "Suco natural", common.NewMoneyFromCents(500))
-		_, _ = cat.AddItem(*item)
+		_ = cat.AddItem(*item)
 
 		err := cat.RemoveItem(item.ItemID)
 
@@ -109,7 +109,7 @@ func TestCategory_GetItem(t *testing.T) {
 	t.Run("get existing item", func(t *testing.T) {
 		cat, _ := NewCategory("Drinks")
 		item, _ := NewItemMenu("Suco", "Suco natural", common.NewMoneyFromCents(500))
-		_, _ = cat.AddItem(*item)
+		_ = cat.AddItem(*item)
 
 		found, err := cat.GetItem(item.ItemID)
 

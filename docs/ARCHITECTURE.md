@@ -6,7 +6,7 @@
 | -------------- | ---------------------------------------------------------- | -------------- |
 | **Catalog**    | Manages restaurants, menus, categories, items              | 🟡 In Progress |
 | **Ordering**   | Manages order lifecycle (create, confirm, cancel, deliver) | 🔴 Not Started |
-| **Payment**    | Handles payment authorization, refunds                     | 🔴 Not Started |
+| **Payment**    | Handles payment authorization, capture, void, refunds      | 🔴 Not Started |
 | **Restaurant** | Accepts/rejects orders from restaurant perspective         | 🔴 Not Started |
 | **Delivery**   | Assigns couriers, tracks delivery                          | 🔴 Not Started |
 
@@ -41,27 +41,43 @@ Reference diagram: `docs/images/CriaçãoPedido.png`
    - Delivery listens to OrderConfirmed -> Dispatch()
 ```
 
-### Compensation Flows (3 Error Scenarios)
+### Compensation Flows (5 Error Scenarios)
 
 ```
-ERRO 1: PaymentFailed
+ERRO 1: PaymentFailed (autorização recusada)
   - Payment publishes PaymentFailed
   - Ordering calls Cancel("PAYMENT_FAILED")
   - Publishes: OrderCancelled [outbox]
+  - Nenhuma ação financeira (nada foi cobrado)
   - Saga terminates
 
-ERRO 2: RestaurantOrderRejected
+ERRO 2: RestaurantOrderRejected (antes da captura)
   - Restaurant publishes RestaurantOrderRejected
   - Ordering calls Cancel("RESTAURANT_REJECTED")
-  - Ordering sends RefundPayment command
-  - Payment calls Refund() → publishes PaymentRefunded
+  - Ordering sends VoidPayment command (libera autorização, custo zero)
+  - Payment calls Void() → AUTHORIZED → VOIDED → publishes PaymentVoided
   - Compensation complete
 
-ERRO 3: DeliveryFailed
+ERRO 3: PaymentCaptureFailed (captura falhou após aceite — raro)
+  - Capture disparado em paralelo com OrderConfirmed (abordagem otimista)
+  - Payment publishes PaymentCaptureFailed
+  - Ordering calls Fail("CAPTURE_FAILED") → CONFIRMED → FAILED
+  - Ordering sends CancelDelivery (se já criada) + notifica restaurante
+  - Publishes: OrderFailed [outbox]
+
+ERRO 4: DeliveryFailed (falha operacional)
   - Delivery publishes DeliveryStatusChanged(FAILED)
-  - Ordering calls MarkFailed("DELIVERY_FAILED")
-  - Ordering sends RefundPayment(partial)
-  - Partial refund policy applies
+  - Ordering calls Fail("DELIVERY_FAILED") → IN_DELIVERY → FAILED
+  - Ordering sends RefundPayment(orderId) — refund total
+  - Payment calls Refund() → CAPTURED → REFUNDED → publishes PaymentRefunded
+  - Publishes: OrderFailed [outbox]
+
+ERRO 5: Cliente recusa entrega
+  - Cliente cancela via POST /orders/{id}/cancel com status IN_DELIVERY
+  - Ordering calls Cancel("CUSTOMER_REFUSED") → IN_DELIVERY → CANCELLED
+  - Ordering sends CancelDelivery + RefundPayment(orderId) — refund total
+  - Payment calls Refund() → CAPTURED → REFUNDED → publishes PaymentRefunded
+  - Publishes: OrderCancelled [outbox]
 ```
 
 ---
@@ -95,9 +111,11 @@ ERRO 3: DeliveryFailed
 
 **Context:** Compensation flows become progressively complex:
 
-- PaymentFailed → 1 step (simple cancel)
-- RestaurantRejected → 2 steps (cancel + refund)
-- DeliveryFailed → 2+ steps (mark failed + partial refund with business policy)
+- PaymentFailed → 1 step (simple cancel, no financial action)
+- RestaurantRejected → 2 steps (cancel + void authorization)
+- PaymentCaptureFailed → 2-3 steps (fail order + cancel delivery + notify restaurant)
+- DeliveryFailed → 2 steps (fail order + refund total)
+- CustomerRefused → 3 steps (cancel order + cancel delivery + refund total)
 
 **Consideration:** When implementing the **Ordering Context**, evaluate whether compensations
 should use **orchestration** instead of choreography. The book suggests a **Hybrid Approach**:
@@ -138,3 +156,7 @@ The Catalog module is NOT affected by this decision — it only:
 | 2026-02-16 | Parallel Saga (Orchestrated Validation)             | Ordering     | ✅ Active         |
 | 2026-02-16 | gRPC for internal sync validation                   | Catalog      | ✅ Active         |
 | 2026-02-16 | Event-Carried State Transfer (Fat Events)           | All contexts | ✅ Active         |
+| 2026-02-18 | Payment Capture on restaurant acceptance (optimistic) | Payment/Ordering | ✅ Active     |
+| 2026-02-18 | Void vs Refund distinction based on capture state   | Payment      | ✅ Active         |
+| 2026-02-18 | FAILED status added to Order (distinct from CANCELLED) | Ordering   | ✅ Active         |
+| 2026-02-18 | Full refund on customer-refused delivery (simplification) | Payment/Ordering | ✅ Active |

@@ -14,7 +14,7 @@ import (
 )
 
 func TestMenuRepository_Save(t *testing.T) {
-	repo := NewMenuRepository(testDB)
+	repo := NewMenuRepository(testDB, NewOutboxRepository(testDB))
 
 	testMenuName := "Test Menu"
 	testCatName := "Beverages"
@@ -102,7 +102,7 @@ func TestMenuRepository_Save(t *testing.T) {
 }
 
 func TestMenuRepository_FindByRestaurantId(t *testing.T) {
-	repo := NewMenuRepository(testDB)
+	repo := NewMenuRepository(testDB, NewOutboxRepository(testDB))
 
 	t.Run("find menus by restaurant id", func(t *testing.T) {
 		truncateTables(testDB)
@@ -147,8 +147,8 @@ func TestMenuRepository_FindByRestaurantId(t *testing.T) {
 }
 
 func TestMenuRepository_LifecycleTransitions(t *testing.T) {
-	repo := NewMenuRepository(testDB)
-	restRepo := NewRestaurantRepository(testDB)
+	repo := NewMenuRepository(testDB, NewOutboxRepository(testDB))
+	restRepo := NewRestaurantRepository(testDB, NewOutboxRepository(testDB))
 
 	t.Run("should persist events for menu transitions", func(t *testing.T) {
 		truncateTables(testDB)

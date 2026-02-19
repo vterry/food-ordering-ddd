@@ -56,7 +56,7 @@ var (
 		`
 
 	QueryUpsertRestaurant = `
-	INSERT INTO restaurant (uuid, name, address_street, address_number, address_compl, address_neigh, address_city, address_state, address_zipcode, status, active_menu_id, createdAt, updatedAt)
+	INSERT INTO restaurant (uuid, name, address_street, address_number, address_compl, address_neigh, address_city, address_state, address_zipcode, status, active_menu_id, created_at, updated_at)
 	VALUES (?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())
 	ON DUPLICATE KEY UPDATE
 		name = VALUES(name),
@@ -69,22 +69,20 @@ var (
 		address_zipcode = VALUES(address_zipcode),
 		status = VALUES(status),
 		active_menu_id = VALUES(active_menu_id),
-		updatedAt = NOW();`
+		updated_at = NOW();`
 
 	QueryFindRestaurantByUUID = `
-	SELECT id, uuid, name, address_street, address_number, address_compl, address_neigh, address_city, address_state, address_zipcode, status, active_menu_id, createdAt, updatedAt
+	SELECT id, uuid, name, address_street, address_number, address_compl, address_neigh, address_city, address_state, address_zipcode, status, active_menu_id, created_at, updated_at
 	FROM restaurant
 	WHERE uuid = ?`
 
 	QueryFindAllRestaurants = `
-	SELECT id, uuid, name, address_street, address_number, address_compl, address_neigh, address_city, address_state, address_zipcode, status, active_menu_id, createdAt, updatedAt
+	SELECT id, uuid, name, address_street, address_number, address_compl, address_neigh, address_city, address_state, address_zipcode, status, active_menu_id, created_at, updated_at
 	FROM restaurant`
 
 	QueryInsertOutboxEvent = `
 	INSERT INTO outbox_events (uuid, aggregate_id, aggregate_type, type, payload, occurred_on, published_at)
 	VALUES (?,?,?,?,?,?,NULL)`
-
-	QueryInsertPublishedEvent = `INSERT INTO outbox_events (uuid, aggregate_id, aggregate_type, type, payload,occurred_on, published_at) VALUES (?,?,?,?,?,?,?)`
 
 	QueryFindUnpublishedEvents = `
 	SELECT id, uuid, aggregate_id, aggregate_type, type, payload, occurred_on

@@ -36,8 +36,9 @@ func NewCatalogServer(cfg *config.Config, db *sql.DB, logger *slog.Logger) *Cata
 }
 
 func (c *CatalogServer) Run() error {
-	menuRepo := repository.NewMenuRepository(c.db)
-	restaurantRepo := repository.NewRestaurantRepository(c.db)
+	outboxRepo := repository.NewOutboxRepository(c.db)
+	menuRepo := repository.NewMenuRepository(c.db, outboxRepo)
+	restaurantRepo := repository.NewRestaurantRepository(c.db, outboxRepo)
 	unitOfWork := repository.NewUnitOfWork(c.db)
 
 	assignMenuService := services.NewMenuAssignmentService()

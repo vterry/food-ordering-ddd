@@ -31,7 +31,7 @@ Responsável pelo ciclo de vida do pedido do ponto de vista do cliente.[web:23][
   - Criar pedidos.
   - Orquestrar a saga (Payment, Restaurant, Delivery).
   - Manter estados:
-    - `PENDING → PAID → CONFIRMED → IN_DELIVERY → DELIVERED / CANCELLED`.
+    - `PENDING → PAID → CONFIRMED → IN_DELIVERY → DELIVERED / CANCELLED / FAILED`.
 
 ### 2.2. Restaurant Management Context
 
@@ -89,7 +89,7 @@ Gerencia restaurantes, menus e itens.[web:22][web:26][web:53]
   - `items: List<OrderItem>`
   - `totalAmount: Money (VO)`
   - `status: OrderStatus`
-    - `PENDING`, `PAID`, `CONFIRMED`, `IN_DELIVERY`, `DELIVERED`, `CANCELLED`
+    - `PENDING`, `PAID`, `CONFIRMED`, `IN_DELIVERY`, `DELIVERED`, `CANCELLED`, `FAILED`
   - `paymentId`
   - `deliveryId`
   - `createdAt`, `updatedAt`.[web:27]
@@ -115,6 +115,21 @@ Gerencia restaurantes, menus e itens.[web:22][web:26][web:53]
   - Total = soma dos itens.
   - Itens não podem ser alterados após `CONFIRMED`.
   - Mudança de status apenas via métodos de domínio.
+
+- Máquina de estados (`OrderStatus`):
+  - `PENDING → PAID` (pagamento autorizado)
+  - `PENDING → CANCELLED` (pagamento falhou, ou cliente cancelou)
+  - `PAID → CONFIRMED` (restaurante aceitou + pagamento capturado)
+  - `PAID → CANCELLED` (restaurante rejeitou, ou cliente cancelou antes do aceite)
+  - `CONFIRMED → IN_DELIVERY` (entregador saiu em rota)
+  - `IN_DELIVERY → DELIVERED` (entrega concluída)
+  - `IN_DELIVERY → CANCELLED` (cliente recusou receber o pedido → refund total)
+  - `IN_DELIVERY → FAILED` (falha na entrega — incidente operacional)
+  - `PAID → FAILED` (falha na captura do pagamento — raro, mas possível)
+
+- Distinção semântica:
+  - `CANCELLED`: ação deliberada (cliente cancelou, restaurante rejeitou, pagamento recusado).
+  - `FAILED`: impedimento técnico/operacional (entrega falhou, captura falhou).
 
 ---
 
@@ -171,10 +186,22 @@ Gerencia restaurantes, menus e itens.[web:22][web:26][web:53]
   - `orderId`
   - `amount: Money`
   - `status: PaymentStatus`
-    - `INITIATED`, `AUTHORIZED`, `CAPTURED`, `FAILED`, `REFUNDED`
+    - `INITIATED`, `AUTHORIZED`, `CAPTURED`, `FAILED`, `VOIDED`, `REFUNDED`
   - `method`
   - `externalTransactionId`
   - `createdAt`, `updatedAt`.[web:27][web:80]
+
+- Máquina de estados (`PaymentStatus`):
+  - `INITIATED → AUTHORIZED` (gateway aprovou autorização)
+  - `INITIATED → FAILED` (gateway recusou autorização)
+  - `AUTHORIZED → CAPTURED` (captura executada após aceite do restaurante)
+  - `AUTHORIZED → FAILED` (captura falhou — autorização expirada ou erro no gateway)
+  - `AUTHORIZED → VOIDED` (cancelamento antes da captura — libera reserva, custo zero)
+  - `CAPTURED → REFUNDED` (estorno total após captura)
+
+- Distinção operacional:
+  - **Void**: libera autorização antes da captura. Sem custo financeiro.
+  - **Refund**: estorno real após captura. Pode ter custo de chargeback.
 
 ---
 
@@ -242,7 +269,9 @@ Gerencia restaurantes, menus e itens.[web:22][web:26][web:53]
 - `PaymentInitiated`
 - `PaymentAuthorized`
 - `PaymentCaptured`
+- `PaymentCaptureFailed`
 - `PaymentFailed`
+- `PaymentVoided`
 - `PaymentRefunded`.[web:80][web:81]
 
 ### 4.3. Restaurant – eventos publicados
@@ -378,7 +407,7 @@ Objetivo: da criação do pedido até a entrega concluída.
 
 #### A.6. Ordering reage a RestaurantOrderAccepted / Rejected
 
-**RestaurantOrderAccepted**
+**RestaurantOrderAccepted (abordagem otimista — confirma e captura em paralelo)**
 
 1. Consumer em Ordering lê `RestaurantOrderAccepted`.
 2. Carrega `Order`.
@@ -387,6 +416,17 @@ Objetivo: da criação do pedido até a entrega concluída.
    - Domain event: `OrderConfirmed`.
 4. Persistir `Order` + outbox.
 5. Publicar `OrderConfirmed`.
+6. **Em paralelo**, Ordering envia comando `CapturePayment(orderId)` para Payment.
+7. Payment executa captura no gateway:
+   - Se OK: `payment.Capture()` → `AUTHORIZED → CAPTURED` → domain event `PaymentCaptured`.
+   - Se falhou: `payment.FailCapture(reason)` → `AUTHORIZED → FAILED` → domain event `PaymentCaptureFailed`.
+8. Se `PaymentCaptureFailed`:
+   - Ordering recebe evento e executa compensação:
+     - `order.Fail("CAPTURE_FAILED")` → `CONFIRMED → FAILED`.
+     - Envia comando `CancelDelivery(orderId)` para Delivery (se já criada).
+     - Notifica restaurante para cancelar preparo.
+
+> **Nota**: falha de captura após autorização bem-sucedida é rara (o valor já foi reservado no cartão), mas não impossível (autorização expirada, problema no gateway). A abordagem otimista prioriza latência sobre consistência imediata.
 
 **RestaurantOrderRejected**
 
@@ -396,7 +436,9 @@ Objetivo: da criação do pedido até a entrega concluída.
    - `PAID → CANCELLED`.
 4. Persistir + outbox.
 5. Publicar `OrderCancelled`.
-6. Opcional: enviar comando `RefundPayment(orderId)` para Payment.
+6. Ordering envia comando `VoidPayment(orderId)` para Payment.
+   - Payment executa void (libera autorização sem custo): `AUTHORIZED → VOIDED`.
+   - Domain event: `PaymentVoided`.
 
 ---
 
@@ -483,32 +525,54 @@ Casos principais:
 #### B.2. Restaurante rejeita pedido
 
 - Já coberto em A.5 e A.6:
-  - `RestaurantOrderRejected` → `OrderCancelled` + `RefundPayment`.
+  - `RestaurantOrderRejected` → `OrderCancelled` + `VoidPayment` (pagamento ainda não capturado).
 
 #### B.3. Cliente cancela antes de aceitação
 
 1. Endpoint `POST /orders/{id}/cancel`.
 2. Carrega `Order`.
 3. Regras:
-   - Se `status ∈ {PENDING, PAID}`:
+   - Se `status == PENDING`:
      - `order.Cancel("CUSTOMER_REQUEST")`.
      - Persistir + `OrderCancelled`.
-   - Se estava `PAID`, Ordering envia comando `RefundPayment(orderId)` para Payment.
+     - Nenhuma ação financeira (pagamento ainda não autorizado).
+   - Se `status == PAID`:
+     - `order.Cancel("CUSTOMER_REQUEST")`.
+     - Persistir + `OrderCancelled`.
+     - Ordering envia comando `VoidPayment(orderId)` para Payment (libera autorização).
 4. Worker publica `OrderCancelled`.
 
-#### B.4. Cancelamento durante entrega
+> **Nota**: antes da captura (antes do aceite do restaurante), o cancelamento é financeiramente barato — basta um Void para liberar a reserva no cartão, sem custo de estorno.
 
-1. Cliente cancela após `IN_DELIVERY` (regra de negócio local).
-2. Ordering decide:
-   - Se permitir cancelamento:
-     - Envia comando para Delivery: `CancelDelivery(orderId)`.
-3. Delivery:
+#### B.4. Cancelamento durante entrega (cliente recusa)
+
+1. Cliente cancela após `IN_DELIVERY` via endpoint `POST /orders/{id}/cancel`.
+2. Ordering valida que `status == IN_DELIVERY`.
+3. `order.Cancel("CUSTOMER_REFUSED")`:
+   - `IN_DELIVERY → CANCELLED`.
+   - Domain event: `OrderCancelled`.
+4. Ordering envia comando `CancelDelivery(orderId)` para Delivery.
+5. Delivery:
    - `delivery.MarkFailed("CUSTOMER_CANCELLED")`.
    - Publica `DeliveryStatusChanged(FAILED)`.
-4. Ordering:
-   - Ao receber `FAILED`, pode marcar `OrderFailed` ou `OrderCancelled` com política de compensação (reembolso parcial, taxa etc.).
-5. Payment:
-   - Recebe comando `RefundPayment` (possivelmente parcial).[web:63][web:87]
+6. Ordering envia comando `RefundPayment(orderId)` para Payment.
+   - **Refund total** (decisão de simplificação para o case).
+   - Payment executa estorno: `CAPTURED → REFUNDED` → domain event `PaymentRefunded`.
+
+> **Nota sobre Void vs Refund**: a operação financeira depende de quando o cancelamento acontece em relação à captura do pagamento:
+> - **Antes do aceite do restaurante** (PENDING, PAID): pagamento apenas autorizado → **Void** (libera reserva, custo zero).
+> - **Depois do aceite** (CONFIRMED, IN_DELIVERY): pagamento já capturado → **Refund** (estorno real).
+
+#### B.5. Falha na entrega (incidente operacional)
+
+1. Delivery publica `DeliveryStatusChanged(FAILED)` por motivo operacional (ex: acidente, endereço não encontrado).
+2. Consumer em Ordering lê o evento.
+3. `order.Fail("DELIVERY_FAILED")`:
+   - `IN_DELIVERY → FAILED`.
+   - Domain event: `OrderFailed`.
+4. Ordering envia comando `RefundPayment(orderId)` para Payment.
+   - **Refund total** (decisão de simplificação).
+5. Persistir + outbox e publicar `OrderFailed`.
 
 ---
 

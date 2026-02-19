@@ -18,7 +18,7 @@ func NewCatalogGrpcServer(menuService input.MenuService) *CatalogGrpcServer {
 	}
 }
 
-func (c *CatalogGrpcServer) ValidateRestaurantAndItems(ctx context.Context, req *pb.ValidateRestaurantAndItemsRequest) (*pb.ValidateRestauranteAndItemsRespose, error) {
+func (c *CatalogGrpcServer) ValidateRestaurantAndItems(ctx context.Context, req *pb.ValidateRestaurantAndItemsRequest) (*pb.ValidateRestaurantAndItemsResponse, error) {
 	validationReq := input.ValidateOrderRequest{
 		RestaurantID: req.RestaurantId,
 		ItemIDs:      req.ItemsId,
@@ -37,7 +37,7 @@ func (c *CatalogGrpcServer) ValidateRestaurantAndItems(ctx context.Context, req 
 			PriceCents: item.PriceCents,
 		})
 	}
-	return &pb.ValidateRestauranteAndItemsRespose{
+	return &pb.ValidateRestaurantAndItemsResponse{
 		Valid:            res.Valid,
 		ValidationErrors: res.ValidationErrors,
 		Items:            pbItems,

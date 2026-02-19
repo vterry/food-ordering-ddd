@@ -1,29 +1,56 @@
 # Catalog Domain - TODO
 
-> Última atualização: 2026-02-17
+> Última atualização: 2026-02-19
 > Ref. arquitetural: `docs/ARCHITECTURE.md`
+
+---
+
+## 🎯 Próxima Sessão — Foco Prioritário
+
+### Para concluir o Catalog (em ordem sugerida)
+
+1. **Fase 2 — Testes (QA)** — _pré-requisito para fechar o Catalog_
+2. **Débitos de Domínio restantes** — _corrigir antes de iniciar próximo módulo_
+3. **Fase 3 — Messaging (Outbox Worker)** — _pré-requisito para o Saga funcionar_
+4. **CQRS — ValidateOrder** — _explorar separação de leitura/escrita em MenuAppService_
+
+### Gate para iniciar próximo módulo (Ordering)
+
+- [ ] Testes de Handler (unit) implementados
+- [ ] Testes E2E (integração completa) implementados
+- [ ] Outbox Worker funcional (polling + publish)
+- [ ] EventPublisher conectado (RabbitMQ ou Kafka)
+- [ ] Débitos de domínio críticos resolvidos (ver seção abaixo)
 
 ---
 
 ## 🚧 Backlog de Implementação (Pendente)
 
 ### 🟠 Fase 2: Quality Assurance & Integration
-- [ ] Implementar Testes de Unidade para Handlers (Mocking Service)
-- [ ] Implementar Testes de Integração (E2E) para Fluxo Completo:
-  - Criar Restaurante -> Criar Menu -> Adicionar Itens -> Ativar -> Buscar Ativo
-- [ ] Validar Robustez do Server Lifecycle:
+
+- [ ] **Testes de Unidade para Handlers REST** (Mocking Service)
+  - `RestaurantHandler`: criar restaurante, erros de validação, not found
+  - `MenuHandler`: criar menu, ativar, arquivar, adicionar categoria/item
+- [ ] **Testes de Integração (E2E) para Fluxo Completo**:
+  - Criar Restaurante → Criar Menu → Adicionar Itens → Ativar → Buscar Ativo
+- [ ] **Validar Robustez do Server Lifecycle**:
   - Graceful Shutdown com requisições em andamento (drain)
   - Startup Lento/Timeouts (NotifyReady channel)
 
 ### 🟡 Fase 3: gRPC Server (Finalização)
-- [ ] Adicionar Health Checks gRPC
+
+- [ ] Adicionar Health Checks gRPC (`grpc.health.v1`)
 
 ### 🟡 Fase 3: Messaging (Outbound)
-- [ ] Implementar `EventPublisher` (RabbitMQ/Kafka)
-- [ ] Worker de polling para tabela `outbox`
+
+- [ ] Implementar `EventPublisher` (RabbitMQ ou Kafka — definir broker)
+- [ ] Worker de polling para tabela `outbox_events`
+  - Consulta eventos com `status = 'pending'`, publica, marca como `published`
+  - Considerar lock otimista (`SELECT ... FOR UPDATE SKIP LOCKED`)
 - [ ] Garantir "At-Least-Once delivery" (Idempotency keys no consumidor)
 
 ### 🔵 Fase 4: Deployment (Kubernetes & Istio)
+
 - [ ] Criar `Dockerfile` (Multi-stage build: builder + runner distroless/alpine)
 - [ ] Configurar `.dockerignore`
 - [ ] Pipeline de CI/CD (GitHub Actions)
@@ -32,44 +59,21 @@
 
 ---
 
-## 🛠 Débitos Técnicos & Refatoração (Prioridade Alta)
+## 🛠 Débitos Técnicos & Refatoração (Restantes)
 
-### Code Review & Clean Architecture
-- [ ] **Camada Anti-Corrupção (Input Parsing)**:
-  - *Problema:* `MenuAppService` recebe strings e faz parsing para VOs. Adapters (`utils.go`) importam domínio diretamente.
-  - *Solução:* Mover parsing para o Handler. Remover imports de domínio em `adapters/input/rest`.
-- [ ] **Error Handling Refactoring**:
-  - *Problema:* `handleAppError` acopla HTTP Status com Erros de Domínio.
-  - *Solução:* Criar estratégia de mapeamento de erros agnóstica (Middleware ou Mapper).
-- [ ] **Validação de DTOs**:
-  - *Problema:* Tags `binding` (Gin) usadas com `go-playground/validator`.
-  - *Solução:* Substituir por tags `validate`.
-- [ ] **Violações da Lei de Demeter**:
-  - *Problema:* Acesso a campos embeddados (ex: `restaurant.RestaurantID.ID().String()`).
-  - *Solução:* Usar method promotion (`restaurant.String()`). Afeta Mappers, Events e Repositories.
-- [ ] **Rollback Redundante**:
-  - *Problema:* `UnitOfWork` chama `Rollback` explicitamente além do `defer`.
-  - *Solução:* Remover chamada explícita.
+### Domínio & Regras de Negócio (Todos resolvidos ✅)
 
-### Domínio & Regras de Negócio
-- [ ] **Domain Logic Leak**:
-  - *Problema:* `validateSingleItem` no Service contém regras de negócio.
-  - *Solução:* Mover para `Menu.ValidateItems(...)`.
-- [ ] **Invariante de Agregado (Restaurant)**:
-  - *Problema:* `Restaurant.UpdateMenu` não valida ownership do menu.
-  - *Solução:* Adicionar validação.
-- [ ] **Erros Silenciados em Repositórios**:
-  - *Problema:* Erros de parsing (`ParseMenuStatus`, `ParseUUID`) ignorados no scan do banco.
-  - *Solução:* Tratar e propagar erros de corrupção de dados.
-- [ ] **Side-Effect em Category.AddItem**:
-  - *Problema:* `PullEvent` chamado em cópia de valor/struct.
-  - *Solução:* Revisar lógica de eventos em coleções.
+> Os bugs de domínio originalmente listados foram verificados no código atual e estão todos resolvidos:
+> `Menu.Activate()` order, eventos duplicados, `processChildren`, erros silenciados em repositórios,
+> e side-effect em `Category.AddItem`. Ver seção "Concluídas" para detalhes.
 
-### Observações Menores
-- [ ] Renomear `handleAddMenuCategorie` para `handleAddCategory` (typo).
-- [ ] Renomear `restauntIdStr` para `restaurantIdStr` (typo).
-- [ ] Remover variável global `Validate` em `utils.go`.
-- [ ] Adicionar contexto de request nos logs de erro interno.
+### Code Review & Clean Architecture (Todos resolvidos ✅)
+
+> Todos os itens de clean architecture foram resolvidos nesta sessão. Ver seção "Concluídas".
+
+- [ ] **CQRS — `MenuAppService.ValidateOrder`** *(Explorar em sessão dedicada)*:
+  - *Problema:* `MenuAppService` acumula métodos misturando Commands e Queries. `ValidateOrder` é uma query de leitura complexa sem side effects.
+  - *Ação:* Avaliar extração para `CatalogQueryService` separado, com repositório read-only.
 
 ---
 
@@ -81,6 +85,7 @@
 - [x] Makefile (`up`, `down`, `logs`, `migrations`)
 - [x] Migrations (`golang-migrate`) com Schema Relacional (Surrogate Keys + UUIDs)
 - [x] Repositórios MySQL (`Restaurant`, `Menu`, `Outbox`) com Testcontainers
+- [x] Schema padronizado para snake_case (`created_at`/`updated_at`) — migrations `20260218000001`, `20260218000002`
 
 ### Domínio (Core)
 - [x] Agregados: `Restaurant` e `Menu` completos
@@ -89,6 +94,8 @@
 - [x] Domain Events (Fat Events: `ItemMenuCreated`, `MenuActivated`, etc.)
 - [x] Specifications Pattern
 - [x] Domain Services (`MenuAssignmentService`)
+- [x] `Menu.ValidateItems()` — lógica de validação de itens movida do Service para o Agregado
+- [x] `Restaurant.UpdateMenu` ownership garantido via `MenuAssignmentService`
 
 ### Aplicação & API
 - [x] `MenuAppService` e `RestaurantAppService`
@@ -98,11 +105,24 @@
 - [x] Unit of Work Pattern
 - [x] Testes Unitários (> 95% cobertura de domínio)
 
-### Refatorações (Realizadas)
+### Refatorações (Realizadas em 2026-02-19)
 - [x] Remoção de dependências de framework no domínio
 - [x] Saga Pattern: Fairy Tale + Orchestrated Compensations (Decisão)
-- [x] Outbox Pattern foundation
-- [x] Violação de Demeter em `Menu` -> `Category` corrigida
+- [x] Outbox Pattern foundation + `OutboxRepository.SaveEvents` (elimina duplicação)
+- [x] Violação de Demeter em `Menu` → `Category` corrigida
 - [x] Vazamento de Transação em `UnitOfWork` corrigido
-- [x] Status Codes HTTP corrigidos
-- [x] Mapeamento de erros de domínio para 422
+- [x] `UnitOfWork`: removido `tx.Rollback()` explícito redundante (somente `defer` mantido)
+- [x] Status Codes HTTP corrigidos + mapeamento de erros de domínio para 422
+- [x] `RestaurantStatus.String()` corrigido: `"CLOSE"` → `"CLOSED"`
+- [x] `GrpcListener` config corrigido: `"9090"` → `":9090"`
+- [x] Código não utilizado removido: `getEnvInt()`, `ErrValidation`, `QueryInsertPublishedEvent`
+- [x] Variável global `Validate` desexportada → `validate`
+- [x] Typos corrigidos: `handleAddMenuCategorie` → `handleAddCategory`, `restauntIdStr` → `restaurantIdStr`
+- [x] Typo proto corrigido: `ValidateRestauranteAndItemsRespose` → `ValidateRestaurantAndItemsResponse`
+- [x] DTO tags: `binding:` → `validate:` em todos os request structs
+- [x] Violações da Lei de Demeter corrigidas em `mappers.go`, `events.go` e repositórios (`.ID().String()` → `.String()`)
+- [x] Error mapper extraído: `errormap.go` com `httpStatusFor(err)` separado de `utils.go`
+- [x] `handleAppError` recebe `*http.Request` — contexto de request (method, path) incluído nos logs de erro
+- [x] ACL `RestaurantService`: parsing de UUID movido para os handlers; interface usa `valueobjects.RestaurantID`
+- [x] `ValidateOrder`: adicionada verificação `rest.CanAcceptOrder()` antes de buscar menu ativo
+- [x] Testes de `ValidateOrder` adicionados (restaurante fechado, não encontrado, sem menu, itens válidos/inválidos)

@@ -18,7 +18,7 @@ type RestaurantCreated struct {
 
 func NewRestaurantCreated(restaurant Restaurant) RestaurantCreated {
 	return RestaurantCreated{
-		BaseEvent: common.NewBaseEvent("RestaurantCreated", restaurant.ID().String()),
+		BaseEvent: common.NewBaseEvent("RestaurantCreated", restaurant.String()),
 		Name:      restaurant.Name(),
 		Street:    restaurant.address.Street(),
 		Number:    restaurant.address.Number(),

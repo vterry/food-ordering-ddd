@@ -7,46 +7,43 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/vterry/food-ordering/catalog/internal/adapters/input/grpc/pb"
+	"github.com/vterry/food-ordering/catalog/internal/core/domain/valueobjects"
 	"github.com/vterry/food-ordering/catalog/internal/core/ports/input"
 )
 
-// MockMenuService implements input.MenuService for testing purposes
 type mockMenuService struct {
 	validateOrderFunc func(ctx context.Context, req input.ValidateOrderRequest) (*input.ValidateOrderResponse, error)
 }
 
-// Ensure mockMenuService adheres to the input.MenuService interface
-// We only need ValidateOrder for this test, but Go requires all methods.
-// We'll panic on unused methods to ensure test isolation if they are accidentally called.
-func (m *mockMenuService) ActiveMenu(ctx context.Context, menuIdstr string) error {
+func (m *mockMenuService) ActiveMenu(ctx context.Context, menuId valueobjects.MenuID) error {
 	panic("not implemented")
 }
 
-func (m *mockMenuService) AddCategory(ctx context.Context, menuIdstr string, req input.AddCategoryRequest) error {
+func (m *mockMenuService) AddCategory(ctx context.Context, menuId valueobjects.MenuID, req input.AddCategoryRequest) error {
 	panic("not implemented")
 }
 
-func (m *mockMenuService) AddItemToCategory(ctx context.Context, menuIdstr string, categoryIdstr string, req input.AddItemRequest) error {
+func (m *mockMenuService) AddItemToCategory(ctx context.Context, menuId valueobjects.MenuID, categoryId valueobjects.CategoryID, req input.AddItemRequest) error {
 	panic("not implemented")
 }
 
-func (m *mockMenuService) ArchiveMenu(ctx context.Context, menuIdstr string) error {
+func (m *mockMenuService) ArchiveMenu(ctx context.Context, menuId valueobjects.MenuID) error {
 	panic("not implemented")
 }
 
-func (m *mockMenuService) CreateMenu(ctx context.Context, restIdstr string, req input.CreateMenuRequest) (*input.MenuResponse, error) {
+func (m *mockMenuService) CreateMenu(ctx context.Context, restId valueobjects.RestaurantID, req input.CreateMenuRequest) (*input.MenuResponse, error) {
 	panic("not implemented")
 }
 
-func (m *mockMenuService) GetActiveMenu(ctx context.Context, restaurantIdStr string) (*input.MenuResponse, error) {
+func (m *mockMenuService) GetActiveMenu(ctx context.Context, restId valueobjects.RestaurantID) (*input.MenuResponse, error) {
 	panic("not implemented")
 }
 
-func (m *mockMenuService) GetMenu(ctx context.Context, menuIdstr string) (*input.MenuResponse, error) {
+func (m *mockMenuService) GetMenu(ctx context.Context, menuId valueobjects.MenuID) (*input.MenuResponse, error) {
 	panic("not implemented")
 }
 
-func (m *mockMenuService) UpdateItem(ctx context.Context, menuIdStr string, categoryIdStr string, itemIdStr string, req input.UpdateItemRequest) error {
+func (m *mockMenuService) UpdateItem(ctx context.Context, menuId valueobjects.MenuID, categoryId valueobjects.CategoryID, itemId valueobjects.ItemID, req input.UpdateItemRequest) error {
 	panic("not implemented")
 }
 
@@ -62,7 +59,7 @@ func TestCatalogGrpcServer_ValidateRestaurantAndItems(t *testing.T) {
 		name           string
 		req            *pb.ValidateRestaurantAndItemsRequest
 		mockBehavior   func(m *mockMenuService)
-		expectedResp   *pb.ValidateRestauranteAndItemsRespose
+		expectedResp   *pb.ValidateRestaurantAndItemsResponse
 		expectedErr    bool
 		expectedErrMsg string
 	}{
@@ -86,7 +83,7 @@ func TestCatalogGrpcServer_ValidateRestaurantAndItems(t *testing.T) {
 					}, nil
 				}
 			},
-			expectedResp: &pb.ValidateRestauranteAndItemsRespose{
+			expectedResp: &pb.ValidateRestaurantAndItemsResponse{
 				Valid: true,
 				Items: []*pb.ItemSnapshot{
 					{ItemId: "item-1", Name: "Item 1", PriceCents: 1000},
@@ -111,7 +108,7 @@ func TestCatalogGrpcServer_ValidateRestaurantAndItems(t *testing.T) {
 					}, nil
 				}
 			},
-			expectedResp: &pb.ValidateRestauranteAndItemsRespose{
+			expectedResp: &pb.ValidateRestaurantAndItemsResponse{
 				Valid:            false,
 				Items:            []*pb.ItemSnapshot{},
 				ValidationErrors: []string{"Restaurant is closed"},

@@ -53,56 +53,6 @@ func TestNewItemMenu(t *testing.T) {
 	}
 }
 
-func TestNewItemMenu_EmitsItemMenuCreatedEvent(t *testing.T) {
-	item, err := NewItemMenu("Suco", "Suco natural", common.NewMoneyFromCents(500))
-	require.NoError(t, err)
-
-	events := item.PullEvent()
-	assert.Len(t, events, 1)
-	assert.IsType(t, ItemMenuCreated{}, events[0])
-}
-
-// ============================================================
-// ItemMenu Entity - Availability Transitions
-// ============================================================
-
-func TestItemMenu_MarkAvailable(t *testing.T) {
-	item, _ := NewItemMenu("Suco", "Suco natural", common.NewMoneyFromCents(500))
-	item.MarkUnavailable()
-	item.PullEvent() // limpa eventos
-
-	item.MarkAvailable()
-
-	assert.Equal(t, enums.ItemAvailable, item.Status())
-	events := item.PullEvent()
-	assert.Len(t, events, 1)
-	assert.IsType(t, ItemMenuAvailabilityChanged{}, events[0])
-}
-
-func TestItemMenu_MarkUnavailable(t *testing.T) {
-	item, _ := NewItemMenu("Suco", "Suco natural", common.NewMoneyFromCents(500))
-	item.PullEvent()
-
-	item.MarkUnavailable()
-
-	assert.Equal(t, enums.ItemUnavailable, item.Status())
-	events := item.PullEvent()
-	assert.Len(t, events, 1)
-	assert.IsType(t, ItemMenuAvailabilityChanged{}, events[0])
-}
-
-func TestItemMenu_MarkTemporarilyUnavailable(t *testing.T) {
-	item, _ := NewItemMenu("Suco", "Suco natural", common.NewMoneyFromCents(500))
-	item.PullEvent()
-
-	item.MarkTemporarilyUnavailable()
-
-	assert.Equal(t, enums.ItemTempUnavailable, item.Status())
-	events := item.PullEvent()
-	assert.Len(t, events, 1)
-	assert.IsType(t, ItemMenuAvailabilityChanged{}, events[0])
-}
-
 // ============================================================
 // ItemMenu Entity - Update Operations
 // ============================================================
@@ -110,17 +60,12 @@ func TestItemMenu_MarkTemporarilyUnavailable(t *testing.T) {
 func TestItemMenu_UpdatePrice(t *testing.T) {
 	t.Run("update price succeeds", func(t *testing.T) {
 		item, _ := NewItemMenu("Suco", "Suco natural", common.NewMoneyFromCents(500))
-		item.PullEvent()
 
 		newPrice := common.NewMoneyFromCents(750)
 		err := item.UpdatePrice(newPrice)
 
 		require.NoError(t, err)
 		assert.Equal(t, newPrice, item.BasePrice())
-
-		events := item.PullEvent()
-		assert.Len(t, events, 1)
-		assert.IsType(t, ItemMenuPriceChanged{}, events[0])
 	})
 
 	t.Run("update price with zero returns error", func(t *testing.T) {
@@ -136,16 +81,11 @@ func TestItemMenu_UpdatePrice(t *testing.T) {
 func TestItemMenu_UpdateName(t *testing.T) {
 	t.Run("update name succeeds", func(t *testing.T) {
 		item, _ := NewItemMenu("Suco", "Suco natural", common.NewMoneyFromCents(500))
-		item.PullEvent()
 
 		err := item.UpdateName("Limonada")
 
 		require.NoError(t, err)
 		assert.Equal(t, "Limonada", item.Name())
-
-		events := item.PullEvent()
-		assert.Len(t, events, 1)
-		assert.IsType(t, ItemMenuNameChanged{}, events[0])
 	})
 
 	t.Run("update name with empty returns error", func(t *testing.T) {
@@ -169,16 +109,12 @@ func TestItemMenu_UpdateName(t *testing.T) {
 func TestItemMenu_UpdateDescription(t *testing.T) {
 	t.Run("update description succeeds", func(t *testing.T) {
 		item, _ := NewItemMenu("Suco", "Suco natural", common.NewMoneyFromCents(500))
-		item.PullEvent()
 
 		err := item.UpdateDescription("Suco de laranja natural")
 
 		require.NoError(t, err)
 		assert.Equal(t, "Suco de laranja natural", item.Description())
 
-		events := item.PullEvent()
-		assert.Len(t, events, 1)
-		assert.IsType(t, ItemMenuDescriptionChanged{}, events[0])
 	})
 
 	t.Run("update description with empty returns error", func(t *testing.T) {

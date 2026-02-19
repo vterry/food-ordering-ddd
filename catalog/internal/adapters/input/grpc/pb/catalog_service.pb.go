@@ -73,7 +73,7 @@ func (x *ValidateRestaurantAndItemsRequest) GetItemsId() []string {
 	return nil
 }
 
-type ValidateRestauranteAndItemsRespose struct {
+type ValidateRestaurantAndItemsResponse struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	Valid            bool                   `protobuf:"varint,1,opt,name=valid,proto3" json:"valid,omitempty"`
 	Items            []*ItemSnapshot        `protobuf:"bytes,2,rep,name=items,proto3" json:"items,omitempty"`
@@ -82,20 +82,20 @@ type ValidateRestauranteAndItemsRespose struct {
 	sizeCache        protoimpl.SizeCache
 }
 
-func (x *ValidateRestauranteAndItemsRespose) Reset() {
-	*x = ValidateRestauranteAndItemsRespose{}
+func (x *ValidateRestaurantAndItemsResponse) Reset() {
+	*x = ValidateRestaurantAndItemsResponse{}
 	mi := &file_catalog_service_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ValidateRestauranteAndItemsRespose) String() string {
+func (x *ValidateRestaurantAndItemsResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ValidateRestauranteAndItemsRespose) ProtoMessage() {}
+func (*ValidateRestaurantAndItemsResponse) ProtoMessage() {}
 
-func (x *ValidateRestauranteAndItemsRespose) ProtoReflect() protoreflect.Message {
+func (x *ValidateRestaurantAndItemsResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_catalog_service_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -107,26 +107,26 @@ func (x *ValidateRestauranteAndItemsRespose) ProtoReflect() protoreflect.Message
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ValidateRestauranteAndItemsRespose.ProtoReflect.Descriptor instead.
-func (*ValidateRestauranteAndItemsRespose) Descriptor() ([]byte, []int) {
+// Deprecated: Use ValidateRestaurantAndItemsResponse.ProtoReflect.Descriptor instead.
+func (*ValidateRestaurantAndItemsResponse) Descriptor() ([]byte, []int) {
 	return file_catalog_service_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *ValidateRestauranteAndItemsRespose) GetValid() bool {
+func (x *ValidateRestaurantAndItemsResponse) GetValid() bool {
 	if x != nil {
 		return x.Valid
 	}
 	return false
 }
 
-func (x *ValidateRestauranteAndItemsRespose) GetItems() []*ItemSnapshot {
+func (x *ValidateRestaurantAndItemsResponse) GetItems() []*ItemSnapshot {
 	if x != nil {
 		return x.Items
 	}
 	return nil
 }
 
-func (x *ValidateRestauranteAndItemsRespose) GetValidationErrors() []string {
+func (x *ValidateRestaurantAndItemsResponse) GetValidationErrors() []string {
 	if x != nil {
 		return x.ValidationErrors
 	}
@@ -201,7 +201,7 @@ const file_catalog_service_proto_rawDesc = "" +
 	"!ValidateRestaurantAndItemsRequest\x12#\n" +
 	"\rrestaurant_id\x18\x01 \x01(\tR\frestaurantId\x12\x19\n" +
 	"\bitems_id\x18\x02 \x03(\tR\aitemsId\"\x94\x01\n" +
-	"\"ValidateRestauranteAndItemsRespose\x12\x14\n" +
+	"\"ValidateRestaurantAndItemsResponse\x12\x14\n" +
 	"\x05valid\x18\x01 \x01(\bR\x05valid\x12+\n" +
 	"\x05items\x18\x02 \x03(\v2\x15.catalog.ItemSnapshotR\x05items\x12+\n" +
 	"\x11validation_errors\x18\x03 \x03(\tR\x10validationErrors\"\\\n" +
@@ -211,7 +211,7 @@ const file_catalog_service_proto_rawDesc = "" +
 	"\vprice_cents\x18\x03 \x01(\x03R\n" +
 	"priceCents2\x87\x01\n" +
 	"\x0eCatalogService\x12u\n" +
-	"\x1aValidateRestaurantAndItems\x12*.catalog.ValidateRestaurantAndItemsRequest\x1a+.catalog.ValidateRestauranteAndItemsResposeBIZGgithub.com/vterry/food-ordering/catalog/internal/adapters/input/grpc/pbb\x06proto3"
+	"\x1aValidateRestaurantAndItems\x12*.catalog.ValidateRestaurantAndItemsRequest\x1a+.catalog.ValidateRestaurantAndItemsResponseBIZGgithub.com/vterry/food-ordering/catalog/internal/adapters/input/grpc/pbb\x06proto3"
 
 var (
 	file_catalog_service_proto_rawDescOnce sync.Once
@@ -228,13 +228,13 @@ func file_catalog_service_proto_rawDescGZIP() []byte {
 var file_catalog_service_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_catalog_service_proto_goTypes = []any{
 	(*ValidateRestaurantAndItemsRequest)(nil),  // 0: catalog.ValidateRestaurantAndItemsRequest
-	(*ValidateRestauranteAndItemsRespose)(nil), // 1: catalog.ValidateRestauranteAndItemsRespose
+	(*ValidateRestaurantAndItemsResponse)(nil), // 1: catalog.ValidateRestaurantAndItemsResponse
 	(*ItemSnapshot)(nil),                       // 2: catalog.ItemSnapshot
 }
 var file_catalog_service_proto_depIdxs = []int32{
-	2, // 0: catalog.ValidateRestauranteAndItemsRespose.items:type_name -> catalog.ItemSnapshot
+	2, // 0: catalog.ValidateRestaurantAndItemsResponse.items:type_name -> catalog.ItemSnapshot
 	0, // 1: catalog.CatalogService.ValidateRestaurantAndItems:input_type -> catalog.ValidateRestaurantAndItemsRequest
-	1, // 2: catalog.CatalogService.ValidateRestaurantAndItems:output_type -> catalog.ValidateRestauranteAndItemsRespose
+	1, // 2: catalog.CatalogService.ValidateRestaurantAndItems:output_type -> catalog.ValidateRestaurantAndItemsResponse
 	2, // [2:3] is the sub-list for method output_type
 	1, // [1:2] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name

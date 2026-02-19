@@ -47,27 +47,16 @@ func (r *RestaurantAppService) CreateRestaurant(ctx context.Context, req input.C
 	return toRestaurantResponse(restaurantAgg), nil
 }
 
-func (r *RestaurantAppService) GetRestaurant(ctx context.Context, restIdstr string) (*input.RestaurantResponse, error) {
-	id, err := valueobjects.ParseRestaurantId(restIdstr)
+func (r *RestaurantAppService) GetRestaurant(ctx context.Context, restId valueobjects.RestaurantID) (*input.RestaurantResponse, error) {
+	restaurantAgg, err := r.restaurantRepository.FindById(ctx, restId)
 	if err != nil {
 		return nil, err
 	}
-
-	restaurantAgg, err := r.restaurantRepository.FindById(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
 	return toRestaurantResponse(restaurantAgg), nil
 }
 
-func (r *RestaurantAppService) OpenRestaurant(ctx context.Context, restIdstr string) error {
-	id, err := valueobjects.ParseRestaurantId(restIdstr)
-	if err != nil {
-		return err
-	}
-
-	restaurantAgg, err := r.restaurantRepository.FindById(ctx, id)
+func (r *RestaurantAppService) OpenRestaurant(ctx context.Context, restId valueobjects.RestaurantID) error {
+	restaurantAgg, err := r.restaurantRepository.FindById(ctx, restId)
 	if err != nil {
 		return err
 	}
@@ -81,12 +70,8 @@ func (r *RestaurantAppService) OpenRestaurant(ctx context.Context, restIdstr str
 	})
 }
 
-func (r *RestaurantAppService) CloseRestaurant(ctx context.Context, restIdstr string) error {
-	id, err := valueobjects.ParseRestaurantId(restIdstr)
-	if err != nil {
-		return err
-	}
-	restaurantAgg, err := r.restaurantRepository.FindById(ctx, id)
+func (r *RestaurantAppService) CloseRestaurant(ctx context.Context, restId valueobjects.RestaurantID) error {
+	restaurantAgg, err := r.restaurantRepository.FindById(ctx, restId)
 	if err != nil {
 		return err
 	}

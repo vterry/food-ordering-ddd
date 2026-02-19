@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/vterry/food-ordering/catalog/internal/core/domain/valueobjects"
-	common "github.com/vterry/food-ordering/common/pkg"
 )
 
 var (
@@ -19,9 +18,8 @@ const (
 
 type Category struct {
 	valueobjects.CategoryID
-	name   string
-	items  []ItemMenu
-	events []common.DomainEvent
+	name  string
+	items []ItemMenu
 }
 
 func NewCategory(name string) (*Category, error) {
@@ -36,20 +34,20 @@ func NewCategory(name string) (*Category, error) {
 	}, nil
 }
 
-func (c *Category) AddItem(item ItemMenu) ([]common.DomainEvent, error) {
+func (c *Category) AddItem(item ItemMenu) error {
 	for i := range c.items {
 		if c.items[i].ItemID.Equals(item.ItemID) {
-			return nil, ErrItemAlreadyExist
+			return ErrItemAlreadyExist
 		}
 	}
 
 	if len(c.items) >= MaxItemPerCategory {
-		return nil, ErrMaxItemsReached
+		return ErrMaxItemsReached
 	}
 
 	c.items = append(c.items, item)
 
-	return item.PullEvent(), nil
+	return nil
 }
 
 func (c *Category) RemoveItem(itemId valueobjects.ItemID) error {

@@ -33,7 +33,6 @@ func (u *UnitOfWork) Run(ctx context.Context, fn func(ctx context.Context) error
 	ctxWithTx := context.WithValue(ctx, txKey{}, tx)
 
 	if err := fn(ctxWithTx); err != nil {
-		tx.Rollback()
 		return err
 	}
 

@@ -11,7 +11,7 @@ import (
 )
 
 func TestRestaurantRepository_Save(t *testing.T) {
-	repo := NewRestaurantRepository(testDB)
+	repo := NewRestaurantRepository(testDB, NewOutboxRepository(testDB))
 
 	tests := []struct {
 		name       string
@@ -91,7 +91,7 @@ func TestRestaurantRepository_Save(t *testing.T) {
 }
 
 func TestRestaurantRepository_FindById(t *testing.T) {
-	repo := NewRestaurantRepository(testDB)
+	repo := NewRestaurantRepository(testDB, NewOutboxRepository(testDB))
 
 	tests := []struct {
 		name       string
@@ -150,7 +150,7 @@ func TestRestaurantRepository_FindById(t *testing.T) {
 }
 
 func TestRestaurantRepository_FindAll(t *testing.T) {
-	repo := NewRestaurantRepository(testDB)
+	repo := NewRestaurantRepository(testDB, NewOutboxRepository(testDB))
 
 	t.Run("find all returns all restaurants", func(t *testing.T) {
 		truncateTables(testDB)
@@ -175,7 +175,7 @@ func TestRestaurantRepository_FindAll(t *testing.T) {
 }
 
 func TestRestaurantRepository_StateTransitions(t *testing.T) {
-	repo := NewRestaurantRepository(testDB)
+	repo := NewRestaurantRepository(testDB, NewOutboxRepository(testDB))
 	menuId := valueobjects.NewMenuID()
 
 	t.Run("should persist events for opening and closing", func(t *testing.T) {
