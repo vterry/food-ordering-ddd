@@ -46,34 +46,45 @@ func (o *OutboxProcessor) Start(ctx context.Context) {
 }
 
 func (o *OutboxProcessor) processBatch(ctx context.Context) error {
-	return o.uow.Run(ctx, func(txCtx context.Context) error {
+	var eventsToProcess []output.OutboxEvent
+
+	err := o.uow.Run(ctx, func(txCtx context.Context) error {
 		events, err := o.outboxRepo.FindUnpublishedEvents(txCtx, o.batchSize)
 		if err != nil {
 			return err
 		}
-
-		if len(events) == 0 {
-			return nil
-		}
-
-		for _, event := range events {
-			msg := output.EventMessage{
-				EventID:       event.UUID.String(),
-				AggregateID:   event.AggregateID,
-				AggregateType: event.AggregateType,
-				EventType:     event.EventType,
-				Payload:       event.Payload,
-				OcurredAt:     event.OccurredOn.UnixMilli(),
-			}
-
-			if err := o.publisher.Publish(txCtx, msg); err != nil {
-				return err
-			}
-
-			if err := o.outboxRepo.MarkAsPublished(txCtx, event.UUID); err != nil {
-				return err
-			}
-		}
+		eventsToProcess = events
 		return nil
 	})
+
+	if err != nil {
+		return err
+	}
+
+	if len(eventsToProcess) == 0 {
+		return nil
+	}
+
+	for _, event := range eventsToProcess {
+		msg := output.EventMessage{
+			EventID:       event.UUID.String(),
+			AggregateID:   event.AggregateID,
+			AggregateType: event.AggregateType,
+			EventType:     event.EventType,
+			Payload:       event.Payload,
+			OcurredAt:     event.OccurredOn.UnixMilli(),
+		}
+
+		if pubErr := o.publisher.Publish(ctx, msg); pubErr != nil {
+			return pubErr
+		}
+
+		if mErr := o.uow.Run(ctx, func(txCtx context.Context) error {
+			return o.outboxRepo.MarkAsPublished(txCtx, event.UUID)
+		}); mErr != nil {
+			return mErr
+		}
+	}
+
+	return nil
 }
