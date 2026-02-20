@@ -11,6 +11,7 @@ import (
 	"github.com/vterry/food-ordering/catalog/internal/core/ports/output"
 )
 
+// TODO - Improve this
 // httpStatusFor maps domain and infrastructure errors to HTTP status codes.
 // Unknown errors (infrastructure/unexpected) map to 500.
 func httpStatusFor(err error) int {

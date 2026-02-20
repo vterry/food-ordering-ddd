@@ -48,7 +48,10 @@ func (o *OutboxRepository) SaveEvents(ctx context.Context, aggregateID, aggregat
 }
 
 func (o *OutboxRepository) FindUnpublishedEvents(ctx context.Context, limit int) ([]output.OutboxEvent, error) {
-	rows, err := o.db.QueryContext(ctx, QueryFindUnpublishedEvents, limit)
+
+	executor := getExecutor(ctx, o.db)
+
+	rows, err := executor.QueryContext(ctx, QueryFindUnpublishedEvents, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -90,6 +93,7 @@ func (o *OutboxRepository) FindUnpublishedEvents(ctx context.Context, limit int)
 }
 
 func (o *OutboxRepository) MarkAsPublished(ctx context.Context, eventID uuid.UUID) error {
-	_, err := o.db.ExecContext(ctx, QueryMarkAsPublished, eventID.String())
+	executor := getExecutor(ctx, o.db)
+	_, err := executor.ExecContext(ctx, QueryMarkAsPublished, eventID.String())
 	return err
 }

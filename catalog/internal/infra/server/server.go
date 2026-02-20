@@ -3,13 +3,16 @@ package server
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
 
+	amqp "github.com/rabbitmq/amqp091-go"
 	grpcAdapter "github.com/vterry/food-ordering/catalog/internal/adapters/input/grpc"
 	"github.com/vterry/food-ordering/catalog/internal/adapters/input/grpc/pb"
 	"github.com/vterry/food-ordering/catalog/internal/adapters/input/rest"
+	"github.com/vterry/food-ordering/catalog/internal/adapters/output/messaging"
 	"github.com/vterry/food-ordering/catalog/internal/adapters/output/repository"
 	"github.com/vterry/food-ordering/catalog/internal/core/app"
 	"github.com/vterry/food-ordering/catalog/internal/core/domain/services"
@@ -18,20 +21,28 @@ import (
 )
 
 type CatalogServer struct {
-	cfg         *config.Config
-	db          *sql.DB
-	httpServer  *http.Server
-	grpcServer  *grpc.Server
-	logger      *slog.Logger
-	NotifyReady chan struct{}
+	cfg          *config.Config
+	db           *sql.DB
+	httpServer   *http.Server
+	grpcServer   *grpc.Server
+	rabbitCon    *amqp.Connection
+	pubChan      *amqp.Channel
+	logger       *slog.Logger
+	workerCtx    context.Context
+	workerCancel context.CancelFunc
+	NotifyReady  chan struct{}
 }
 
-func NewCatalogServer(cfg *config.Config, db *sql.DB, logger *slog.Logger) *CatalogServer {
+func NewCatalogServer(cfg *config.Config, db *sql.DB, rabbitCon *amqp.Connection, pubChan *amqp.Channel, logger *slog.Logger) *CatalogServer {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &CatalogServer{
-		cfg:         cfg,
-		db:          db,
-		logger:      logger,
-		NotifyReady: make(chan struct{}),
+		cfg:          cfg,
+		db:           db,
+		pubChan:      pubChan,
+		logger:       logger,
+		workerCtx:    ctx,
+		workerCancel: cancel,
+		NotifyReady:  make(chan struct{}),
 	}
 }
 
@@ -44,10 +55,20 @@ func (c *CatalogServer) Run() error {
 	assignMenuService := services.NewMenuAssignmentService()
 
 	menuAppService := app.NewMenuAppService(assignMenuService, unitOfWork, menuRepo, restaurantRepo)
-	restaurantAppService := app.NewRestaurantAppService(unitOfWork, menuRepo, restaurantRepo)
+	restaurantAppService := app.NewRestaurantAppService(unitOfWork, restaurantRepo)
 
 	restMenuHandler := rest.NewMenuHandler(menuAppService, c.logger)
 	restRestaurantHandler := rest.NewRestaurantHandler(restaurantAppService, c.logger)
+
+	publisher, err := messaging.NewRabbitMQPublisher(c.pubChan, c.cfg.OutboxCfg.QueueName, c.logger)
+	if err != nil {
+		if err != nil {
+			return fmt.Errorf("failed to create rabbit publisher: %w", err)
+		}
+	}
+
+	relay := app.NewOutboxProcessor(outboxRepo, publisher, unitOfWork, c.cfg.OutboxCfg.PollingInterval, c.cfg.OutboxCfg.BatchSize)
+	relay.Start(c.workerCtx)
 
 	mux := http.NewServeMux()
 	restMenuHandler.RegisterRoutes(mux)
@@ -89,6 +110,16 @@ func (c *CatalogServer) Run() error {
 }
 
 func (c *CatalogServer) Stop(ctx context.Context) error {
+
+	c.workerCancel()
+
+	if c.pubChan != nil {
+		c.pubChan.Close()
+	}
+
+	if c.rabbitCon != nil {
+		c.rabbitCon.Close()
+	}
 
 	if c.grpcServer != nil {
 		c.grpcServer.GracefulStop()

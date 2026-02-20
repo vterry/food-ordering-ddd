@@ -150,3 +150,46 @@ Considerar esta refatoração quando:
 - Houver 3+ aggregate repositories com lógica de outbox
 - A estrutura do outbox event mudar (ex: adicionar campos como `correlation_id`, `saga_id`)
 - O projeto migrar para múltiplos bounded contexts com outbox independente
+
+---
+
+## 3. Garantia de Ordem e Idempotência (At-Least-Once Delivery)
+
+> Registrado em: 2026-02-19
+> Ref: Discussão de Design Tático (Mensageria e Sagas)
+
+### Problema Atual: Duplicidade e Concorrência de Eventos
+
+Na arquitetura atual com o **Outbox Pattern**, utilizamos uma tabela no MySQL e um *Worker* (com *polling* e *Pessimistic Locking* via `SELECT ... FOR UPDATE SKIP LOCKED`).
+Isso gera uma garantia de entrega **At-Least-Once** para o RabbitMQ.
+
+O cenário de conflito/duplicidade acontece da seguinte forma:
+1. O Worker lê um evento da tabela `outbox_events`.
+2. O evento é publicado com sucesso no RabbitMQ.
+3. **Antes** que o Worker consiga atualizar a coluna `processed` para `true` no banco de dados e dar o COMMIT, ocorre uma falha brusca (ex: Out-Of-Memory, crash do pod).
+4. A transação do MySQL sofre Rollback, o lock é liberado e o evento volta a pendência.
+5. Quando o Worker (ou outra instância) rodar novamente, ele republicará a mesma mensagem.
+
+Adicionalmente, utilizando RabbitMQ e sendo necessário um roteamento avançado, a garantia universal de **ordem dos eventos** distribuídos sem gargalos (ex: um Menu alterado múltiplas vezes numa janela curta) fica sob mais propensão a desafios.
+
+### Solução Adotada Atualmente (RabbitMQ + Inbox / Consumer Track)
+
+1.  **RabbitMQ for Message Routing:** Simplifica a adoção inicial focada na roteirização de eventos entre os contextos de negócio (*Smart Broker*).
+2.  **Idempotency Key & Inbox Pattern:** Os serviços consumidores downstream (Ex: Ordering, Delivery) utilizarão uma tabela `inbox_events` local no seu próprio banco de dados, protegida por chave primária baseada no `EventID`. O processamento será agrupado em uma transação local do consumidor. Se houver falha de chave duplicada (violação da PK), o consumidor saberá que o evento é uma duplicata, fará rollback do processamento local daquela request, mas retornará "ACK" pro RabbitMQ limpando a fila silenciosamente.
+
+### Evolução Futura: Kafka & Event Sourced Read Models
+
+Para explorar cenários de escala maciça e garantir de forma sistêmica a consistência eventual e a ordem, as seguintes evoluções arquiteturais estão mapeadas:
+
+1.  **Migração para o Apache Kafka (Dumb Broker / Smart Consumer):**
+    *   **Garantia de Ordem Absoluta:** Ao usar a chave do agregado (ex: `MenuID`, `RestaurantID`) como *Partition Key* no Kafka, todos os eventos do mesmo agregado cairão na mesma partição, garantindo um processamento estritamente FIFO por domínio.
+    *   **Replay Nativo:** O Log Imutável do Kafka permite que os serviços "re-leiam" mensagens ativamente. Isso é essencial num padrão de "Fat Events" se quisermos recriar bancos de dados de leitura (Read Models) do zero.
+
+2.  **Transição para Event Sourced Read Models & Version Tracking:**
+    *   Em contraste ao padrão *Inbox/Tabela de Idempotência*, os consumidores downstream poderão adotar *Natural Idempotence* via histórico de Eventos Consumidos (Versionamento/OccurredAt).
+    *   **Padrão CQRS:** As projeções (para consultas/read-models da UI) são reconstruídas e alimentadas pelas "versões" lidas do Kafka. Se um consumidor de visão de cardápio ler um evento `MenuUpdated(Version=3)` quando seu estado já processou a versão `4`, ele rejeita / ignora naturalmente esse evento por ser defasado temporalmente, substituindo assim o custoso check transacional.
+
+**Gatilhos práticos para quando focar na mudança:**
+*   A gestão de filas/bindings se tornar complexa diante da malha de Sagas, ou gargalo no roteamento do RabbitMQ.
+*   Necessidade da recriação e projeção dos bancos de dados visuais dos aplicativos (CQRS real) e dos relatórios de forma determinística ("Como nosso cardápio estava configurado no dia X e por quê?").
+*   Queda ou impacto na performance em consumidores devido unicamente à excessiva competição por exclusão em tabelas `inbox` contra o MySQL nas validações de Idempotência.

@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/vterry/food-ordering/catalog/internal/infra/config"
 	"github.com/vterry/food-ordering/catalog/internal/infra/db/mysql"
 	"github.com/vterry/food-ordering/catalog/internal/infra/server"
@@ -30,7 +31,20 @@ func main() {
 	log.Printf("Database connection established")
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	server := server.NewCatalogServer(cfg, database, logger)
+
+	rabbitCon, err := amqp.Dial(cfg.OutboxCfg.Address)
+	if err != nil {
+		log.Fatalf("Failed to connect to RabbitMQ: %v", err)
+	}
+
+	rabbitChan, err := rabbitCon.Channel()
+	if err != nil {
+		log.Fatalf("Failed to open RabbitMQ channel: %v", err)
+	}
+
+	logger.Info("RabbitMQ connection established")
+
+	server := server.NewCatalogServer(cfg, database, rabbitCon, rabbitChan, logger)
 
 	go func() {
 		if err := server.Run(); err != nil && err != http.ErrServerClosed {

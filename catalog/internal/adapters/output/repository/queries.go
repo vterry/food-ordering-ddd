@@ -56,7 +56,7 @@ var (
 		`
 
 	QueryUpsertRestaurant = `
-	INSERT INTO restaurant (uuid, name, address_street, address_number, address_compl, address_neigh, address_city, address_state, address_zipcode, status, active_menu_id, created_at, updated_at)
+	INSERT INTO restaurants (uuid, name, address_street, address_number, address_compl, address_neigh, address_city, address_state, address_zipcode, status, active_menu_id, created_at, updated_at)
 	VALUES (?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())
 	ON DUPLICATE KEY UPDATE
 		name = VALUES(name),
@@ -73,12 +73,12 @@ var (
 
 	QueryFindRestaurantByUUID = `
 	SELECT id, uuid, name, address_street, address_number, address_compl, address_neigh, address_city, address_state, address_zipcode, status, active_menu_id, created_at, updated_at
-	FROM restaurant
+	FROM restaurants
 	WHERE uuid = ?`
 
 	QueryFindAllRestaurants = `
 	SELECT id, uuid, name, address_street, address_number, address_compl, address_neigh, address_city, address_state, address_zipcode, status, active_menu_id, created_at, updated_at
-	FROM restaurant`
+	FROM restaurants`
 
 	QueryInsertOutboxEvent = `
 	INSERT INTO outbox_events (uuid, aggregate_id, aggregate_type, type, payload, occurred_on, published_at)
@@ -90,6 +90,7 @@ var (
 	WHERE published_at IS NULL
 	ORDER BY id ASC
 	LIMIT ?
+	FOR UPDATE SKIP LOCKED
 	`
 
 	QueryMarkAsPublished = `

@@ -18,8 +18,6 @@
 
 - [ ] Testes de Handler (unit) implementados
 - [ ] Testes E2E (integração completa) implementados
-- [ ] Outbox Worker funcional (polling + publish)
-- [ ] EventPublisher conectado (RabbitMQ ou Kafka)
 - [ ] Débitos de domínio críticos resolvidos (ver seção abaixo)
 
 ---
@@ -40,14 +38,6 @@
 ### 🟡 Fase 3: gRPC Server (Finalização)
 
 - [ ] Adicionar Health Checks gRPC (`grpc.health.v1`)
-
-### 🟡 Fase 3: Messaging (Outbound)
-
-- [ ] Implementar `EventPublisher` (RabbitMQ ou Kafka — definir broker)
-- [ ] Worker de polling para tabela `outbox_events`
-  - Consulta eventos com `status = 'pending'`, publica, marca como `published`
-  - Considerar lock otimista (`SELECT ... FOR UPDATE SKIP LOCKED`)
-- [ ] Garantir "At-Least-Once delivery" (Idempotency keys no consumidor)
 
 ### 🔵 Fase 4: Deployment (Kubernetes & Istio)
 
@@ -71,9 +61,15 @@
 
 > Todos os itens de clean architecture foram resolvidos nesta sessão. Ver seção "Concluídas".
 
-- [ ] **CQRS — `MenuAppService.ValidateOrder`** *(Explorar em sessão dedicada)*:
-  - *Problema:* `MenuAppService` acumula métodos misturando Commands e Queries. `ValidateOrder` é uma query de leitura complexa sem side effects.
-  - *Ação:* Avaliar extração para `CatalogQueryService` separado, com repositório read-only.
+- [ ] **CQRS — `MenuAppService.ValidateOrder`** *(Prioridade Máxima)*:
+  - *Problema:* `MenuAppService` acumula métodos misturando Commands e Queries. `ValidateOrder` é uma query de leitura complexa e instanciar entidades pesadas no Repositório afeta a performance.
+  - *Ação:* Criar `CatalogQueryService` e `CatalogQueryRepository` usando SQL otimizado para retornar structs flat.
+- [ ] **Mapeamento Semântico de Erros (Error Types):**
+  - *Problema:* O arquivo `errormap.go` acopla a camada REST aos pacotes internos, usando um switch-case gigante sobre instâncias de erro (`errors.Is`). Erros crus de infra podem gerar `500` não mapeados.
+  - *Ação:* Criar Custom Error Types (`NotFoundError`, `ValidationError`) no Core. Alterar `errormap.go` para usar `errors.As` validando tipos universais, desaclopando o REST dos pacotes internos (violando menos o OCP).
+- [ ] **Resiliência do Outbox Processor (DLQ & Retries):**
+  - *Problema:* Se o RabbitMQ estiver indiponível, o processor fica num loop infinito travando a fila (`processBatch` falha e volta ao banco).
+  - *Ação:* Criar coluna de `retry_count`. Implementar Dead Letter Queue local (ignorar a mensagem se tentar 3x) para o worker prosseguir.
 
 ---
 
@@ -126,3 +122,8 @@
 - [x] ACL `RestaurantService`: parsing de UUID movido para os handlers; interface usa `valueobjects.RestaurantID`
 - [x] `ValidateOrder`: adicionada verificação `rest.CanAcceptOrder()` antes de buscar menu ativo
 - [x] Testes de `ValidateOrder` adicionados (restaurante fechado, não encontrado, sem menu, itens válidos/inválidos)
+
+### Messaging & EDA (Outbound)
+- [x] Implementar `EventPublisher` Adapter (RabbitMQ via amqp091-go integrado)
+- [x] Outbox Worker funcional: Polling na tabela `outbox_events` com Lock Otimista
+- [x] Mapeada resiliência e "At-Least-Once delivery" (Idempotency keys prontas para o consumidor)

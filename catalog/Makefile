@@ -11,10 +11,10 @@ migrate-up:
 	@$(MIGRATE_CMD) up
 
 migrate-down:
-	@$(MIGRATE_CMD) down 1
+	@$(MIGRATE_CMD) down
 
 migrate-force:
-	@$(MIGRATE_CMD) force $(filter-out $@,$(MAKECMDGOALS))
+	@$(MIGRATE_CMD) force $(VERSION)
 
 test:
 	@go test -v ./...

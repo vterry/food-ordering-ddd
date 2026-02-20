@@ -32,10 +32,10 @@ type categoryBasket struct {
 	Items []menu.ItemMenu
 }
 
-func NewMenuRepository(db *sql.DB, outbotx output.OutboxRepository) *MenuRepository {
+func NewMenuRepository(db *sql.DB, outbox output.OutboxRepository) *MenuRepository {
 	return &MenuRepository{
 		db:     db,
-		outbox: outbotx,
+		outbox: outbox,
 	}
 }
 

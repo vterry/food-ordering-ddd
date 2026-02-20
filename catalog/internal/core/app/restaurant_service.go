@@ -13,14 +13,12 @@ var _ input.RestaurantService = (*RestaurantAppService)(nil)
 
 type RestaurantAppService struct {
 	uow                  output.UnitOfWork
-	menuRepository       output.MenuRepository
 	restaurantRepository output.RestaurantRepository
 }
 
-func NewRestaurantAppService(uow output.UnitOfWork, menuRepo output.MenuRepository, restaurantRepo output.RestaurantRepository) *RestaurantAppService {
+func NewRestaurantAppService(uow output.UnitOfWork, restaurantRepo output.RestaurantRepository) *RestaurantAppService {
 	return &RestaurantAppService{
 		uow:                  uow,
-		menuRepository:       menuRepo,
 		restaurantRepository: restaurantRepo,
 	}
 }

@@ -11,6 +11,20 @@ services:
       - '3306:3306'
     networks:
       - db
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: catalog-rabbitmq
+    restart: no
+    environment:
+      - RABBITMQ_DEFAULT_USER=catalog
+      - RABBITMQ_DEFAULT_PASS=catalog
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - db
+
 networks:
   local_network:
     driver: bridge

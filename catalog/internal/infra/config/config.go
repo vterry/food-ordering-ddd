@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -11,6 +12,15 @@ type Config struct {
 	HttpListener string
 	GrpcListener string
 	Db           DbConfig
+	OutboxCfg    OutboxConfig
+}
+
+type OutboxConfig struct {
+	Address         string
+	QueueName       string
+	DLQName         string
+	BatchSize       int
+	PollingInterval time.Duration
 }
 
 type DbConfig struct {
@@ -24,6 +34,7 @@ func NewConfig() *Config {
 	if err := godotenv.Load(); err != nil {
 		fmt.Printf("warning: .env file not found: %v\n", err)
 	}
+
 	return &Config{
 		HttpListener: getEnv("HTTP_PORT", ":8080"),
 		GrpcListener: getEnv("GRPC_PORT", ":9090"),
@@ -32,6 +43,13 @@ func NewConfig() *Config {
 			Password: getEnv("DB_PASS", "root"),
 			Address:  fmt.Sprintf("%s:%s", getEnv("DB_HOST", "127.0.0.1"), getEnv("DB_PORT", "3306")),
 			Name:     getEnv("DB_NAME", "catalog-db"),
+		},
+		OutboxCfg: OutboxConfig{
+			Address:         fmt.Sprintf("amqp://%s:%s@%s:%s", getEnv("RABBIT_USER", "catalog"), getEnv("RABBIT_PASS", "catalog"), getEnv("RABBIT_HOST", "localhost"), getEnv("RABBIT_PORT", "5672")),
+			QueueName:       getEnv("QUEUE_NAME", "catalog_events"),
+			DLQName:         getEnv("DLQ_NAME", "catalog-dlq"),
+			BatchSize:       getEnvInt("OB_BATCH_SIZE", 50),
+			PollingInterval: getEnvAsDuration("OB_POLL_INTERVAL", 3*time.Second),
 		},
 	}
 }
@@ -43,3 +61,21 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
+func getEnvInt(key string, fallback int) int {
+	if value, ok := os.LookupEnv(key); ok {
+		var i int
+		if _, err := fmt.Sscanf(value, "%d", &i); err == nil {
+			return i
+		}
+	}
+	return fallback
+}
+
+func getEnvAsDuration(key string, fallback time.Duration) time.Duration {
+	if value, ok := os.LookupEnv(key); ok {
+		if parsed, err := time.ParseDuration(value); err == nil {
+			return parsed
+		}
+	}
+	return fallback
+}
