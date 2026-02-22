@@ -7,58 +7,25 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/vterry/food-ordering/catalog/internal/adapters/input/grpc/pb"
-	"github.com/vterry/food-ordering/catalog/internal/core/domain/valueobjects"
 	"github.com/vterry/food-ordering/catalog/internal/core/ports/input"
 )
 
-type mockMenuService struct {
+type mockCatalogQueryService struct {
 	validateOrderFunc func(ctx context.Context, req input.ValidateOrderRequest) (*input.ValidateOrderResponse, error)
 }
 
-func (m *mockMenuService) ActiveMenu(ctx context.Context, menuId valueobjects.MenuID) error {
-	panic("not implemented")
-}
-
-func (m *mockMenuService) AddCategory(ctx context.Context, menuId valueobjects.MenuID, req input.AddCategoryRequest) error {
-	panic("not implemented")
-}
-
-func (m *mockMenuService) AddItemToCategory(ctx context.Context, menuId valueobjects.MenuID, categoryId valueobjects.CategoryID, req input.AddItemRequest) error {
-	panic("not implemented")
-}
-
-func (m *mockMenuService) ArchiveMenu(ctx context.Context, menuId valueobjects.MenuID) error {
-	panic("not implemented")
-}
-
-func (m *mockMenuService) CreateMenu(ctx context.Context, restId valueobjects.RestaurantID, req input.CreateMenuRequest) (*input.MenuResponse, error) {
-	panic("not implemented")
-}
-
-func (m *mockMenuService) GetActiveMenu(ctx context.Context, restId valueobjects.RestaurantID) (*input.MenuResponse, error) {
-	panic("not implemented")
-}
-
-func (m *mockMenuService) GetMenu(ctx context.Context, menuId valueobjects.MenuID) (*input.MenuResponse, error) {
-	panic("not implemented")
-}
-
-func (m *mockMenuService) UpdateItem(ctx context.Context, menuId valueobjects.MenuID, categoryId valueobjects.CategoryID, itemId valueobjects.ItemID, req input.UpdateItemRequest) error {
-	panic("not implemented")
-}
-
-func (m *mockMenuService) ValidateOrder(ctx context.Context, req input.ValidateOrderRequest) (*input.ValidateOrderResponse, error) {
+func (m *mockCatalogQueryService) ValidateOrder(ctx context.Context, req input.ValidateOrderRequest) (*input.ValidateOrderResponse, error) {
 	if m.validateOrderFunc != nil {
 		return m.validateOrderFunc(ctx, req)
 	}
-	return nil, errors.New("validateOrderFunc not implemented in mock")
+	return nil, errors.New("validateOrderFunc not set")
 }
 
 func TestCatalogGrpcServer_ValidateRestaurantAndItems(t *testing.T) {
 	tests := []struct {
 		name           string
 		req            *pb.ValidateRestaurantAndItemsRequest
-		mockBehavior   func(m *mockMenuService)
+		mockBehavior   func(m *mockCatalogQueryService)
 		expectedResp   *pb.ValidateRestaurantAndItemsResponse
 		expectedErr    bool
 		expectedErrMsg string
@@ -69,7 +36,7 @@ func TestCatalogGrpcServer_ValidateRestaurantAndItems(t *testing.T) {
 				RestaurantId: "rest-123",
 				ItemsId:      []string{"item-1", "item-2"},
 			},
-			mockBehavior: func(m *mockMenuService) {
+			mockBehavior: func(m *mockCatalogQueryService) {
 				m.validateOrderFunc = func(ctx context.Context, req input.ValidateOrderRequest) (*input.ValidateOrderResponse, error) {
 					assert.Equal(t, "rest-123", req.RestaurantID)
 					assert.Equal(t, []string{"item-1", "item-2"}, req.ItemIDs)
@@ -99,7 +66,7 @@ func TestCatalogGrpcServer_ValidateRestaurantAndItems(t *testing.T) {
 				RestaurantId: "rest-closed",
 				ItemsId:      []string{"item-1"},
 			},
-			mockBehavior: func(m *mockMenuService) {
+			mockBehavior: func(m *mockCatalogQueryService) {
 				m.validateOrderFunc = func(ctx context.Context, req input.ValidateOrderRequest) (*input.ValidateOrderResponse, error) {
 					return &input.ValidateOrderResponse{
 						Valid:            false,
@@ -121,7 +88,7 @@ func TestCatalogGrpcServer_ValidateRestaurantAndItems(t *testing.T) {
 				RestaurantId: "rest-error",
 				ItemsId:      []string{"item-1"},
 			},
-			mockBehavior: func(m *mockMenuService) {
+			mockBehavior: func(m *mockCatalogQueryService) {
 				m.validateOrderFunc = func(ctx context.Context, req input.ValidateOrderRequest) (*input.ValidateOrderResponse, error) {
 					return nil, errors.New("db connection failed")
 				}
@@ -133,7 +100,7 @@ func TestCatalogGrpcServer_ValidateRestaurantAndItems(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockSvc := &mockMenuService{}
+			mockSvc := &mockCatalogQueryService{}
 			if tt.mockBehavior != nil {
 				tt.mockBehavior(mockSvc)
 			}
