@@ -43,11 +43,11 @@ func NewRestaurant(name string, address valueobjects.Address) (*Restaurant, erro
 func (r *Restaurant) Open() error {
 
 	if r.status == enums.RestaurantOpened {
-		return ErrAlreadyOpened
+		return common.NewBusinessRuleErr(ErrAlreadyOpened)
 	}
 
 	if r.activeMenuID.IsZero() {
-		return ErrNoActiveMenu
+		return common.NewBusinessRuleErr(ErrNoActiveMenu)
 	}
 
 	r.status = enums.RestaurantOpened
@@ -61,7 +61,7 @@ func (r *Restaurant) Open() error {
 func (r *Restaurant) Close() error {
 
 	if r.status == enums.RestaurantClosed {
-		return ErrAlreadyClosed
+		return common.NewBusinessRuleErr(ErrAlreadyClosed)
 	}
 
 	r.status = enums.RestaurantClosed
@@ -74,7 +74,7 @@ func (r *Restaurant) Close() error {
 
 func (r *Restaurant) UpdateMenu(activeMenuID valueobjects.MenuID) error {
 	if activeMenuID.IsZero() {
-		return ErrMenuIdIsNil
+		return common.NewBusinessRuleErr(ErrMenuIdIsNil)
 	}
 	r.activeMenuID = activeMenuID
 	r.AddEvent(NewRestaurantMenuUpdated(r.RestaurantID, activeMenuID))

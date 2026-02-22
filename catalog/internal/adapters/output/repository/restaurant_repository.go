@@ -10,6 +10,7 @@ import (
 	"github.com/vterry/food-ordering/catalog/internal/core/domain/restaurant"
 	"github.com/vterry/food-ordering/catalog/internal/core/domain/valueobjects"
 	"github.com/vterry/food-ordering/catalog/internal/core/ports/output"
+	common "github.com/vterry/food-ordering/common/pkg"
 )
 
 var _ output.RestaurantRepository = (*RestaurantRepository)(nil)
@@ -83,7 +84,7 @@ func (r *RestaurantRepository) FindById(ctx context.Context, id valueobjects.Res
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, output.ErrEntityNotFound
+			return nil, common.NewNotFoundErr(output.ErrEntityNotFound)
 		}
 		return nil, err
 	}

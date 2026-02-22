@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/vterry/food-ordering/catalog/internal/core/domain/valueobjects"
+	common "github.com/vterry/food-ordering/common/pkg"
 )
 
 var (
@@ -37,12 +38,12 @@ func NewCategory(name string) (*Category, error) {
 func (c *Category) AddItem(item ItemMenu) error {
 	for i := range c.items {
 		if c.items[i].ItemID.Equals(item.ItemID) {
-			return ErrItemAlreadyExist
+			return common.NewBusinessRuleErr(ErrItemAlreadyExist)
 		}
 	}
 
 	if len(c.items) >= MaxItemPerCategory {
-		return ErrMaxItemsReached
+		return common.NewBusinessRuleErr(ErrMaxItemsReached)
 	}
 
 	c.items = append(c.items, item)
@@ -57,7 +58,7 @@ func (c *Category) RemoveItem(itemId valueobjects.ItemID) error {
 			return nil
 		}
 	}
-	return ErrItemNotInCategory
+	return common.NewBusinessRuleErr(ErrItemNotInCategory)
 }
 
 func (c *Category) GetItem(itemId valueobjects.ItemID) (*ItemMenu, error) {
@@ -66,7 +67,7 @@ func (c *Category) GetItem(itemId valueobjects.ItemID) (*ItemMenu, error) {
 			return &c.items[i], nil
 		}
 	}
-	return nil, ErrItemNotInCategory
+	return nil, common.NewBusinessRuleErr(ErrItemNotInCategory)
 }
 
 func (c *Category) IsEmpty() bool {

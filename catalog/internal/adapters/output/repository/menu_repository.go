@@ -112,7 +112,7 @@ func (m *MenuRepository) FindById(ctx context.Context, menuId valueobjects.MenuI
 	}
 
 	if len(menus) == 0 {
-		return nil, output.ErrEntityNotFound
+		return nil, common.NewNotFoundErr(output.ErrEntityNotFound)
 	}
 
 	return menus[0], nil

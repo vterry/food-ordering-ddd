@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/vterry/food-ordering/catalog/internal/core/ports/output"
+	common "github.com/vterry/food-ordering/common/pkg"
 )
 
 var _ output.CatalogQueryRepository = (*CatalogQueryRepository)(nil)
@@ -73,7 +74,7 @@ func (c *CatalogQueryRepository) FindOrderValidationData(ctx context.Context, re
 	}
 
 	if result == nil {
-		return nil, output.ErrEntityNotFound
+		return nil, common.NewNotFoundErr(output.ErrEntityNotFound)
 	}
 
 	return result, nil

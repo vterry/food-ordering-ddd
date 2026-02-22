@@ -6,36 +6,31 @@ import (
 	"net/http"
 
 	"github.com/go-playground/validator"
-	"github.com/vterry/food-ordering/catalog/internal/core/domain/menu"
-	"github.com/vterry/food-ordering/catalog/internal/core/domain/restaurant"
-	"github.com/vterry/food-ordering/catalog/internal/core/ports/output"
+	common "github.com/vterry/food-ordering/common/pkg"
 )
 
-// TODO - Improve this
-// httpStatusFor maps domain and infrastructure errors to HTTP status codes.
-// Unknown errors (infrastructure/unexpected) map to 500.
 func httpStatusFor(err error) int {
+
+	var notFound common.NotFoundErr
+	var bizRule common.BusinessRuleErr
+	var valErr common.ValidationErr
+
 	var validationErrors validator.ValidationErrors
 	var syntaxError *json.SyntaxError
 
 	switch {
+	case errors.As(err, &notFound):
+		return http.StatusNotFound
+	case errors.As(err, &bizRule):
+		return http.StatusUnprocessableEntity
+	case errors.As(err, &valErr):
+		return http.StatusBadRequest
 	case errors.As(err, &validationErrors):
 		return http.StatusBadRequest
 	case errors.As(err, &syntaxError):
 		return http.StatusBadRequest
-	case errors.Is(err, output.ErrEntityNotFound):
-		return http.StatusNotFound
-	case errors.Is(err, menu.ErrCategoryNotFound):
-		return http.StatusNotFound
-	case errors.Is(err, menu.ErrMenuNotEditable),
-		errors.Is(err, menu.ErrCannotActivateEmpty),
-		errors.Is(err, menu.ErrAlreadyActive),
-		errors.Is(err, menu.ErrAlreadyArchived),
-		errors.Is(err, restaurant.ErrAlreadyOpened),
-		errors.Is(err, restaurant.ErrAlreadyClosed),
-		errors.Is(err, restaurant.ErrNoActiveMenu):
-		return http.StatusUnprocessableEntity
 	default:
 		return http.StatusInternalServerError
 	}
+
 }

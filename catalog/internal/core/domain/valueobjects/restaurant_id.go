@@ -22,7 +22,7 @@ func (r RestaurantID) String() string {
 func ParseRestaurantId(restaurantId string) (RestaurantID, error) {
 	id, err := uuid.Parse(restaurantId)
 	if err != nil {
-		return RestaurantID{}, err
+		return RestaurantID{}, common.NewValidationErr(err)
 	}
 	return RestaurantID{
 		BaseID: common.NewBaseID(id),

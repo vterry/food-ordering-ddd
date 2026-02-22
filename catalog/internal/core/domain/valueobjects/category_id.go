@@ -22,7 +22,7 @@ func (c CategoryID) String() string {
 func ParseCategoryId(catId string) (CategoryID, error) {
 	id, err := uuid.Parse(catId)
 	if err != nil {
-		return CategoryID{}, err
+		return CategoryID{}, common.NewValidationErr(err)
 	}
 	return CategoryID{
 		BaseID: common.NewBaseID(id),

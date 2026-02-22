@@ -51,11 +51,11 @@ func NewMenu(name string, restaurantId valueobjects.RestaurantID) (*Menu, error)
 
 func (m *Menu) Activate() error {
 	if !m.hasItems() {
-		return ErrCannotActivateEmpty
+		return common.NewBusinessRuleErr(ErrCannotActivateEmpty)
 	}
 
 	if m.status == enums.MenuActive {
-		return ErrAlreadyActive
+		return common.NewBusinessRuleErr(ErrAlreadyActive)
 	}
 
 	m.status = enums.MenuActive
@@ -67,7 +67,7 @@ func (m *Menu) Activate() error {
 
 func (m *Menu) Archive() error {
 	if m.status == enums.MenuArchived {
-		return ErrAlreadyArchived
+		return common.NewBusinessRuleErr(ErrAlreadyArchived)
 	}
 
 	m.status = enums.MenuArchived
@@ -80,11 +80,11 @@ func (m *Menu) Archive() error {
 
 func (m *Menu) AddCategory(category Category) error {
 	if m.status != enums.MenuDraft {
-		return ErrMenuNotEditable
+		return common.NewBusinessRuleErr(ErrMenuNotEditable)
 	}
 
 	if len(m.categories) >= MaxCategoriesPerMenu {
-		return ErrMaxCategoryReached
+		return common.NewBusinessRuleErr(ErrMaxCategoryReached)
 	}
 
 	m.categories = append(m.categories, category)
@@ -97,7 +97,7 @@ func (m *Menu) AddCategory(category Category) error {
 
 func (m *Menu) RemoveCategory(categoryId valueobjects.CategoryID) error {
 	if m.status != enums.MenuDraft {
-		return ErrMenuNotEditable
+		return common.NewBusinessRuleErr(ErrMenuNotEditable)
 	}
 	for i := range m.categories {
 		if m.categories[i].CategoryID.Equals(categoryId) {
@@ -108,7 +108,7 @@ func (m *Menu) RemoveCategory(categoryId valueobjects.CategoryID) error {
 			return nil
 		}
 	}
-	return ErrCategoryNotFound
+	return common.NewNotFoundErr(ErrCategoryNotFound)
 }
 
 func (m *Menu) GetCategory(categoryId valueobjects.CategoryID) (*Category, error) {
@@ -117,7 +117,7 @@ func (m *Menu) GetCategory(categoryId valueobjects.CategoryID) (*Category, error
 			return &m.categories[i], nil
 		}
 	}
-	return nil, ErrCategoryNotFound
+	return nil, common.NewNotFoundErr(ErrCategoryNotFound)
 }
 
 func (m *Menu) Categories() []Category {
@@ -126,7 +126,7 @@ func (m *Menu) Categories() []Category {
 
 func (m *Menu) AddItemToCategory(categoryId valueobjects.CategoryID, item ItemMenu) error {
 	if m.status != enums.MenuDraft {
-		return ErrMenuNotEditable
+		return common.NewBusinessRuleErr(ErrMenuNotEditable)
 	}
 
 	for i := range m.categories {
@@ -142,7 +142,7 @@ func (m *Menu) AddItemToCategory(categoryId valueobjects.CategoryID, item ItemMe
 		}
 	}
 
-	return ErrCategoryNotFound
+	return common.NewNotFoundErr(ErrCategoryNotFound)
 }
 
 func (m *Menu) FindItem(itemId valueobjects.ItemID) (*ItemMenu, bool) {
@@ -156,7 +156,7 @@ func (m *Menu) FindItem(itemId valueobjects.ItemID) (*ItemMenu, bool) {
 
 func (m *Menu) RemoveItemFromCategory(categoryId valueobjects.CategoryID, item ItemMenu) error {
 	if m.status != enums.MenuDraft {
-		return ErrMenuNotEditable
+		return common.NewBusinessRuleErr(ErrMenuNotEditable)
 	}
 
 	category, err := m.GetCategory(categoryId)
@@ -259,7 +259,7 @@ func (m *Menu) UpdateItemAvailability(categoryId valueobjects.CategoryID, itemId
 	case enums.ItemUnavailable:
 		itemRef.MarkUnavailable()
 	default:
-		return ErrInvalidItemStatus
+		return common.NewBusinessRuleErr(ErrInvalidItemStatus)
 	}
 
 	event := NewItemMenuAvailabilityChanged(categoryId, itemId, oldStatus, status)
@@ -297,14 +297,11 @@ func (m *Menu) PullEvent() []common.DomainEvent {
 	return events
 }
 
-// ItemValidationResult holds the outcome of validating a single item in the menu.
 type ItemValidationResult struct {
-	Item  *ItemMenu // non-nil when validation passes
-	Error string    // non-empty when validation fails
+	Item  *ItemMenu
+	Error string
 }
 
-// ValidateItems checks each itemID against the active menu: existence and availability.
-// Parsing of external IDs is the caller's responsibility.
 func (m *Menu) ValidateItems(itemIDs []valueobjects.ItemID) []ItemValidationResult {
 	results := make([]ItemValidationResult, 0, len(itemIDs))
 	for _, id := range itemIDs {

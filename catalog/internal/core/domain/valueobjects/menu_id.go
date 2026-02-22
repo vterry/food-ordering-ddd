@@ -22,7 +22,7 @@ func (m MenuID) String() string {
 func ParseMenuId(menuId string) (MenuID, error) {
 	id, err := uuid.Parse(menuId)
 	if err != nil {
-		return MenuID{}, err
+		return MenuID{}, common.NewValidationErr(err)
 	}
 	return MenuID{
 		BaseID: common.NewBaseID(id),
