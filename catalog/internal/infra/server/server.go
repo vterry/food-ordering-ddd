@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"sync"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 	grpcAdapter "github.com/vterry/food-ordering/catalog/internal/adapters/input/grpc"
@@ -31,6 +32,7 @@ type CatalogServer struct {
 	workerCtx    context.Context
 	workerCancel context.CancelFunc
 	NotifyReady  chan struct{}
+	readyOnce    sync.Once
 }
 
 func NewCatalogServer(cfg *config.Config, db *sql.DB, rabbitCon *amqp.Connection, pubChan *amqp.Channel, logger *slog.Logger) *CatalogServer {
@@ -64,9 +66,7 @@ func (c *CatalogServer) Run() error {
 
 	publisher, err := messaging.NewRabbitMQPublisher(c.pubChan, c.cfg.OutboxCfg.QueueName, c.logger)
 	if err != nil {
-		if err != nil {
-			return fmt.Errorf("failed to create rabbit publisher: %w", err)
-		}
+		return fmt.Errorf("failed to create rabbit publisher: %w", err)
 	}
 
 	relay := app.NewOutboxProcessor(outboxRepo, publisher, unitOfWork, c.cfg.OutboxCfg.PollingInterval, c.cfg.OutboxCfg.BatchSize)
@@ -81,40 +81,45 @@ func (c *CatalogServer) Run() error {
 		Handler: mux,
 	}
 
-	listener, err := net.Listen("tcp", c.cfg.HttpListener)
+	httpListener, err := net.Listen("tcp", c.cfg.HttpListener)
 	if err != nil {
 		return err
 	}
 
+	// Create gRPC server BEFORE starting the goroutine to prevent race on Stop()
+	c.grpcServer = grpc.NewServer()
+	catalogServer := grpcAdapter.NewCatalogGrpcServer(catalogQueryService)
+	pb.RegisterCatalogServiceServer(c.grpcServer, catalogServer)
+
 	go func() {
-		lis, err := net.Listen("tcp", c.cfg.GrpcListener)
+		grpcListener, err := net.Listen("tcp", c.cfg.GrpcListener)
 		if err != nil {
-			c.logger.Error("Failed to listen to gRPC", "error", err)
+			c.logger.Error("Failed to listen for gRPC", "error", err)
 			return
 		}
 
-		grpcServer := grpc.NewServer()
-		catalogServer := grpcAdapter.NewCatalogGrpcServer(catalogQueryService)
-		pb.RegisterCatalogServiceServer(grpcServer, catalogServer)
-		c.grpcServer = grpcServer
-
 		c.logger.Info("gRPC server running", "addr", c.cfg.GrpcListener)
-		if err := grpcServer.Serve(lis); err != nil {
+		if err := c.grpcServer.Serve(grpcListener); err != nil {
 			c.logger.Error("gRPC server failed", "error", err)
 		}
 	}()
 
 	c.logger.Info("HTTP server running and listening", "addr", c.cfg.HttpListener)
 
-	close(c.NotifyReady)
+	c.readyOnce.Do(func() {
+		close(c.NotifyReady)
+	})
 
-	return c.httpServer.Serve(listener)
+	return c.httpServer.Serve(httpListener)
 }
 
 func (c *CatalogServer) Stop(ctx context.Context) error {
+	c.logger.Info("Shutting down catalog server...")
 
+	// 1. Stop accepting new work
 	c.workerCancel()
 
+	// 2. Close messaging resources
 	if c.pubChan != nil {
 		c.pubChan.Close()
 	}
@@ -123,10 +128,12 @@ func (c *CatalogServer) Stop(ctx context.Context) error {
 		c.rabbitCon.Close()
 	}
 
+	// 3. Graceful stop gRPC (drains in-flight RPCs)
 	if c.grpcServer != nil {
 		c.grpcServer.GracefulStop()
 	}
 
+	// 4. Graceful shutdown HTTP (drains in-flight requests)
 	if c.httpServer != nil {
 		return c.httpServer.Shutdown(ctx)
 	}

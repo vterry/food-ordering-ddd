@@ -47,7 +47,10 @@ func (p *RabbitMQPublisher) Publish(ctx context.Context, message output.EventMes
 
 	routingKey := fmt.Sprintf("%s.%s.%s", message.AggregateType, message.AggregateID, message.EventType)
 
-	err = p.channel.PublishWithContext(ctx,
+	pubCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	err = p.channel.PublishWithContext(pubCtx,
 		p.exchangeName,
 		routingKey,
 		false,
