@@ -7,18 +7,14 @@
 
 ## 🎯 Próximo Passo
 
-### 1. Robustez do Server Lifecycle
-
-- [ ] Graceful Shutdown com requisições em andamento (drain) — testar com requests em voo
-- [ ] Startup Lento/Timeouts (NotifyReady channel) — testar cenários de falha na inicialização
+*(Sem atividades pendentes para o momento)*
 
 ---
 
 ## 🛠 Débitos Técnicos
 
-- [ ] **Outbox DLQ** — Se RabbitMQ cair, processor trava em loop. Adicionar `retry_count` + Dead Letter Queue local.
-- [ ] Health Checks gRPC (`grpc.health.v1`)
-- [ ] **OutboxProcessor** — Sem testes unitários (goroutine + ticker). Considerar testes de integração.
+- [x] **Outbox DLQ** — Se RabbitMQ cair, processor trava em loop. Adicionar `retry_count` + Dead Letter Queue local.
+- [x] Health Checks gRPC (`grpc.health.v1`)
 
 ---
 

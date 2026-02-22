@@ -101,7 +101,7 @@ WHERE r.uuid = ?;
 	VALUES (?,?,?,?,?,?,NULL)`
 
 	QueryFindUnpublishedEvents = `
-	SELECT id, uuid, aggregate_id, aggregate_type, type, payload, occurred_on
+	SELECT id, uuid, aggregate_id, aggregate_type, type, payload, occurred_on, retry_count
 	FROM outbox_events
 	WHERE published_at IS NULL
 	ORDER BY id ASC
@@ -113,4 +113,17 @@ WHERE r.uuid = ?;
 	UPDATE outbox_events
 	SET published_at = NOW()
 	WHERE uuid = ?`
+
+	QueryIncrementRetryCount = `
+	UPDATE outbox_events SET retry_count = retry_count + 1 WHERE uuid = ? 
+	`
+
+	QueryInsertOutboxDLQ = `
+	INSERT INTO outbox_dlq (id, aggregate_id, aggregate_type, event_type, payload, occurred_on, retry_count, error_reason)
+	VALUES (?,?,?,?,?,?,?,?)
+	`
+
+	QueryDeleteFromOutbox = `
+	DELETE FROM outbox_events WHERE uuid = ?
+	`
 )

@@ -56,7 +56,7 @@ func main() {
 	case <-server.NotifyReady:
 		log.Println("Catalog server started")
 	case <-time.After(5 * time.Second):
-		log.Println("Warning: Server startup timed out or is taking longer than expected")
+		log.Fatalf("Warning: Server startup timed out or is taking longer than expected")
 	}
 
 	quit := make(chan os.Signal, 1)

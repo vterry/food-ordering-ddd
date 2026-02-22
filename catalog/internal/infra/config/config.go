@@ -17,10 +17,10 @@ type Config struct {
 
 type OutboxConfig struct {
 	Address         string
-	QueueName       string
-	DLQName         string
+	ExchangeName    string
 	BatchSize       int
 	PollingInterval time.Duration
+	RetryCount      int
 }
 
 type DbConfig struct {
@@ -46,10 +46,10 @@ func NewConfig() *Config {
 		},
 		OutboxCfg: OutboxConfig{
 			Address:         fmt.Sprintf("amqp://%s:%s@%s:%s", getEnv("RABBIT_USER", "catalog"), getEnv("RABBIT_PASS", "catalog"), getEnv("RABBIT_HOST", "localhost"), getEnv("RABBIT_PORT", "5672")),
-			QueueName:       getEnv("QUEUE_NAME", "catalog_events"),
-			DLQName:         getEnv("DLQ_NAME", "catalog-dlq"),
+			ExchangeName:    getEnv("EXCHANGE_NAME", "catalog_events"),
 			BatchSize:       getEnvInt("OB_BATCH_SIZE", 50),
 			PollingInterval: getEnvAsDuration("OB_POLL_INTERVAL", 3*time.Second),
+			RetryCount:      getEnvInt("DLQ_RETRY_COUNT", 3),
 		},
 	}
 }

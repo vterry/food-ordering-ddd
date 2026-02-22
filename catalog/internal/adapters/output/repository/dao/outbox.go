@@ -12,4 +12,5 @@ type OutboxEventDAO struct {
 	EventType     string    `db:"type"`
 	Payload       []byte    `db:"payload"`
 	OccurredOn    time.Time `db:"occurred_on"`
+	RetryCount    int       `db:"retry_count"`
 }

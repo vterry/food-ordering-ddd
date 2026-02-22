@@ -68,6 +68,7 @@ func (o *OutboxRepository) FindUnpublishedEvents(ctx context.Context, limit int)
 			&eventDao.EventType,
 			&eventDao.Payload,
 			&eventDao.OccurredOn,
+			&eventDao.RetryCount,
 		)
 
 		if err != nil {
@@ -86,6 +87,7 @@ func (o *OutboxRepository) FindUnpublishedEvents(ctx context.Context, limit int)
 			EventType:     eventDao.EventType,
 			Payload:       eventDao.Payload,
 			OccurredOn:    eventDao.OccurredOn,
+			RetryCount:    eventDao.RetryCount,
 		})
 	}
 
@@ -95,5 +97,21 @@ func (o *OutboxRepository) FindUnpublishedEvents(ctx context.Context, limit int)
 func (o *OutboxRepository) MarkAsPublished(ctx context.Context, eventID uuid.UUID) error {
 	executor := getExecutor(ctx, o.db)
 	_, err := executor.ExecContext(ctx, QueryMarkAsPublished, eventID.String())
+	return err
+}
+
+func (o *OutboxRepository) IncrementRetry(ctx context.Context, eventID uuid.UUID) error {
+	_, err := getExecutor(ctx, o.db).ExecContext(ctx, QueryIncrementRetryCount, eventID.String())
+	return err
+}
+
+func (o *OutboxRepository) MoveToDLQ(ctx context.Context, event output.OutboxEvent, reason string) error {
+	executor := getExecutor(ctx, o.db)
+	_, err := executor.ExecContext(ctx, QueryInsertOutboxDLQ, event.UUID.String(), event.AggregateID, event.AggregateType, event.EventType, event.Payload, event.OccurredOn, event.RetryCount, reason)
+	if err != nil {
+		return err
+	}
+
+	_, err = executor.ExecContext(ctx, QueryDeleteFromOutbox, event.UUID.String())
 	return err
 }

@@ -44,7 +44,7 @@ func TestMain(m *testing.M) {
 		log.Fatalf("failed to start db container: %v", err)
 	}
 
-	connString, err := dbContainer.ConnectionString(ctx, "parseTime=true")
+	connString, err := dbContainer.ConnectionString(ctx, "parseTime=true&multiStatements=true")
 	if err != nil {
 		log.Fatalf("failed to get connection string: %v", err)
 	}
@@ -108,7 +108,7 @@ func runMigrations(db *sql.DB) {
 }
 
 func truncateTables(db *sql.DB) {
-	tables := []string{"items", "categories", "menus", "outbox_events", "restaurants"}
+	tables := []string{"items", "categories", "menus", "outbox_events", "outbox_dlq", "restaurants"}
 	db.Exec("SET FOREIGN_KEY_CHECKS = 0")
 	for _, table := range tables {
 		if _, err := db.Exec("TRUNCATE TABLE " + table); err != nil {

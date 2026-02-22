@@ -1,6 +1,9 @@
 package output
 
-import "context"
+import (
+	"context"
+	"encoding/json"
+)
 
 type EventMessage struct {
 	EventID       string
@@ -8,7 +11,7 @@ type EventMessage struct {
 	AggregateType string
 	EventType     string
 	OcurredAt     int64
-	Payload       []byte
+	Payload       json.RawMessage
 }
 
 type EventPublisher interface {

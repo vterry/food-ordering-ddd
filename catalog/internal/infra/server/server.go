@@ -19,6 +19,8 @@ import (
 	"github.com/vterry/food-ordering/catalog/internal/core/domain/services"
 	"github.com/vterry/food-ordering/catalog/internal/infra/config"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
 type CatalogServer struct {
@@ -26,6 +28,7 @@ type CatalogServer struct {
 	db           *sql.DB
 	httpServer   *http.Server
 	grpcServer   *grpc.Server
+	healthCheck  *health.Server
 	rabbitCon    *amqp.Connection
 	pubChan      *amqp.Channel
 	logger       *slog.Logger
@@ -40,6 +43,7 @@ func NewCatalogServer(cfg *config.Config, db *sql.DB, rabbitCon *amqp.Connection
 	return &CatalogServer{
 		cfg:          cfg,
 		db:           db,
+		rabbitCon:    rabbitCon,
 		pubChan:      pubChan,
 		logger:       logger,
 		workerCtx:    ctx,
@@ -64,12 +68,12 @@ func (c *CatalogServer) Run() error {
 	restMenuHandler := rest.NewMenuHandler(menuAppService, c.logger)
 	restRestaurantHandler := rest.NewRestaurantHandler(restaurantAppService, c.logger)
 
-	publisher, err := messaging.NewRabbitMQPublisher(c.pubChan, c.cfg.OutboxCfg.QueueName, c.logger)
+	publisher, err := messaging.NewRabbitMQPublisher(c.pubChan, c.cfg.OutboxCfg.ExchangeName, c.logger)
 	if err != nil {
 		return fmt.Errorf("failed to create rabbit publisher: %w", err)
 	}
 
-	relay := app.NewOutboxProcessor(outboxRepo, publisher, unitOfWork, c.cfg.OutboxCfg.PollingInterval, c.cfg.OutboxCfg.BatchSize)
+	relay := app.NewOutboxProcessor(outboxRepo, publisher, unitOfWork, c.cfg.OutboxCfg.PollingInterval, c.cfg.OutboxCfg.BatchSize, c.cfg.OutboxCfg.RetryCount, c.logger)
 	relay.Start(c.workerCtx)
 
 	mux := http.NewServeMux()
@@ -99,6 +103,11 @@ func (c *CatalogServer) Run() error {
 		}
 
 		c.logger.Info("gRPC server running", "addr", c.cfg.GrpcListener)
+
+		c.healthCheck = health.NewServer()
+		c.healthCheck.SetServingStatus("", grpc_health_v1.HealthCheckResponse_SERVING)
+		grpc_health_v1.RegisterHealthServer(c.grpcServer, c.healthCheck)
+
 		if err := c.grpcServer.Serve(grpcListener); err != nil {
 			c.logger.Error("gRPC server failed", "error", err)
 		}
@@ -114,28 +123,51 @@ func (c *CatalogServer) Run() error {
 }
 
 func (c *CatalogServer) Stop(ctx context.Context) error {
-	c.logger.Info("Shutting down catalog server...")
-
-	// 1. Stop accepting new work
+	c.logger.Info("Stopping background workers ... ")
 	c.workerCancel()
 
-	// 2. Close messaging resources
+	if c.healthCheck != nil {
+		c.logger.Info("Changing gRPC health status to NOT_SERVING...")
+		c.healthCheck.SetServingStatus("", *grpc_health_v1.HealthCheckResponse_NOT_SERVING.Enum())
+	}
+
+	//Shutting down HTTP Server
+	c.logger.Info("Shutting down catalog server...")
+	var httpErr error
+	if c.httpServer != nil {
+		c.logger.Info("Shutting down HTTP server ...")
+		httpErr = c.httpServer.Shutdown(ctx)
+	}
+
+	// Shutting down gRPC Server
+	if c.grpcServer != nil {
+		c.logger.Info("Shutting down gRPC server ...")
+
+		stopped := make(chan struct{})
+
+		go func() {
+			c.grpcServer.GracefulStop()
+			close(stopped)
+		}()
+
+		select {
+		case <-ctx.Done():
+			c.logger.Warn("gRPC GracefulStop timed out, forcing stop...")
+			c.grpcServer.Stop()
+		case <-stopped:
+			c.logger.Info("gRPC server stopped gracefully")
+		}
+
+	}
+
+	// Shutting down RabbitMQ Channels and Conns
+	c.logger.Info("Closing infra connections ...")
 	if c.pubChan != nil {
 		c.pubChan.Close()
 	}
-
 	if c.rabbitCon != nil {
 		c.rabbitCon.Close()
 	}
 
-	// 3. Graceful stop gRPC (drains in-flight RPCs)
-	if c.grpcServer != nil {
-		c.grpcServer.GracefulStop()
-	}
-
-	// 4. Graceful shutdown HTTP (drains in-flight requests)
-	if c.httpServer != nil {
-		return c.httpServer.Shutdown(ctx)
-	}
-	return nil
+	return httpErr
 }

@@ -9,6 +9,7 @@ import (
 
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/vterry/food-ordering/catalog/internal/core/ports/output"
+	common "github.com/vterry/food-ordering/common/pkg"
 )
 
 type RabbitMQPublisher struct {
@@ -42,10 +43,10 @@ func NewRabbitMQPublisher(channel *amqp.Channel, exchangeName string, logger *sl
 func (p *RabbitMQPublisher) Publish(ctx context.Context, message output.EventMessage) error {
 	body, err := json.Marshal(message)
 	if err != nil {
-		return fmt.Errorf("failed to marshal message: %w", err)
+		return common.NewUnrecoverableErr(fmt.Errorf("failed to marshal message: %w", err))
 	}
 
-	routingKey := fmt.Sprintf("%s.%s.%s", message.AggregateType, message.AggregateID, message.EventType)
+	routingKey := fmt.Sprintf("%s.%s", message.AggregateType, message.EventType)
 
 	pubCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -56,6 +57,9 @@ func (p *RabbitMQPublisher) Publish(ctx context.Context, message output.EventMes
 		false,
 		false,
 		amqp.Publishing{
+			Headers: amqp.Table{
+				"aggregate_id": message.AggregateID,
+			},
 			ContentType:  "application/json",
 			DeliveryMode: amqp.Persistent,
 			MessageId:    message.EventID,
@@ -65,7 +69,7 @@ func (p *RabbitMQPublisher) Publish(ctx context.Context, message output.EventMes
 
 	if err != nil {
 		p.logger.Error("failed to publish to rabbitmq", "event_id", message.EventID, "routing_key", routingKey, "error", err)
-		return fmt.Errorf("failed to publish to rabbitmq: %w", err)
+		return common.NewInfraConnectionErr(fmt.Errorf("failed to publish to rabbitmq: %w", err))
 	}
 
 	p.logger.Debug("event published to rabbitmq successfully", "event_id", message.EventID, "routing_key", routingKey)

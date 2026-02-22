@@ -34,12 +34,15 @@ func TestMain(m *testing.M) {
 		log.Fatalf("failure on start db container: %v", err)
 	}
 
-	connString, err := dbContainer.ConnectionString(ctx, "parseTime=true")
+	connString, err := dbContainer.ConnectionString(ctx, "parseTime=true&multiStatements=true")
 	if err != nil {
 		log.Fatalf("failure on open connection with db container: %v", err)
 	}
 
 	testDB, err = sql.Open("mysql", connString)
+	if err != nil {
+		log.Fatalf("failure on open db connection: %v", err)
+	}
 
 	runMigrations(testDB)
 
@@ -105,7 +108,7 @@ func runMigrations(db *sql.DB) {
 }
 
 func truncateTables(db *sql.DB) {
-	tables := []string{"items", "categories", "menus", "outbox_events", "restaurants"}
+	tables := []string{"items", "categories", "menus", "outbox_events", "outbox_dlq", "restaurants"}
 
 	db.Exec("SET FOREIGN_KEY_CHECKS = 0")
 	for _, table := range tables {

@@ -1,0 +1,125 @@
+2026/02/21 23:48:49 github.com/testcontainers/testcontainers-go - Connected to docker: 
+  Server Version: 29.2.1
+  API Version: 1.51
+  Operating System: Ubuntu 22.04.5 LTS
+  Total Memory: 15932 MB
+  Testcontainers for Go Version: v0.40.0
+  Resolved Docker Host: unix:///var/run/docker.sock
+  Resolved Docker Socket Path: /var/run/docker.sock
+  Test SessionID: b4826fa482153ae2bb2c0ee663f6c145279281af9518cfca52fc21cf39bb515f
+  Test ProcessID: 6624e91b-5848-48af-bc95-f7fb5f77f944
+2026/02/21 23:48:49 🐳 Creating container for image mysql:8.0
+2026/02/21 23:48:49 🐳 Creating container for image testcontainers/ryuk:0.13.0
+2026/02/21 23:48:49 ✅ Container created: 4b0c2806a764
+2026/02/21 23:48:49 🐳 Starting container: 4b0c2806a764
+2026/02/21 23:48:50 ✅ Container started: 4b0c2806a764
+2026/02/21 23:48:50 ⏳ Waiting for container id 4b0c2806a764 image: testcontainers/ryuk:0.13.0. Waiting for: port 8080/tcp to be listening
+2026/02/21 23:48:50 Shell not found in container
+2026/02/21 23:48:50 🔔 Container is ready: 4b0c2806a764
+2026/02/21 23:48:50 ✅ Container created: dec93a646dd1
+2026/02/21 23:48:50 🐳 Starting container: dec93a646dd1
+2026/02/21 23:48:50 ✅ Container started: dec93a646dd1
+2026/02/21 23:48:50 ⏳ Waiting for container id dec93a646dd1 image: mysql:8.0. Waiting for: all of: [log message "port: 3306  MySQL Community Server"]
+2026/02/21 23:49:06 🔔 Container is ready: dec93a646dd1
+=== RUN   TestCatalogQueryRepository_FindOrderValidationData
+=== RUN   TestCatalogQueryRepository_FindOrderValidationData/restaurant_not_found
+=== RUN   TestCatalogQueryRepository_FindOrderValidationData/restaurant_closed
+=== RUN   TestCatalogQueryRepository_FindOrderValidationData/open_restaurant_without_active_menu
+=== RUN   TestCatalogQueryRepository_FindOrderValidationData/open_restaurant_with_active_menu_and_valid_items
+=== RUN   TestCatalogQueryRepository_FindOrderValidationData/items_not_found_in_menu
+=== RUN   TestCatalogQueryRepository_FindOrderValidationData/item_unavailable
+--- PASS: TestCatalogQueryRepository_FindOrderValidationData (2.98s)
+    --- PASS: TestCatalogQueryRepository_FindOrderValidationData/restaurant_not_found (0.40s)
+    --- PASS: TestCatalogQueryRepository_FindOrderValidationData/restaurant_closed (0.48s)
+    --- PASS: TestCatalogQueryRepository_FindOrderValidationData/open_restaurant_without_active_menu (0.46s)
+    --- PASS: TestCatalogQueryRepository_FindOrderValidationData/open_restaurant_with_active_menu_and_valid_items (0.58s)
+    --- PASS: TestCatalogQueryRepository_FindOrderValidationData/items_not_found_in_menu (0.60s)
+    --- PASS: TestCatalogQueryRepository_FindOrderValidationData/item_unavailable (0.46s)
+=== RUN   TestMenuRepository_Save
+=== RUN   TestMenuRepository_Save/save_new_menu_with_items
+    menu_repository_test.go:76: 
+        	Error Trace:	/home/souza/projects/food-ordering-ddd/catalog/internal/adapters/output/repository/menu_repository_test.go:76
+        	            				/home/souza/projects/food-ordering-ddd/catalog/internal/adapters/output/repository/menu_repository_test.go:98
+        	Error:      	Not equal: 
+        	            	expected: 4
+        	            	actual  : 3
+        	Test:       	TestMenuRepository_Save/save_new_menu_with_items
+--- FAIL: TestMenuRepository_Save (0.44s)
+    --- FAIL: TestMenuRepository_Save/save_new_menu_with_items (0.44s)
+=== RUN   TestMenuRepository_FindByRestaurantId
+=== RUN   TestMenuRepository_FindByRestaurantId/find_menus_by_restaurant_id
+--- PASS: TestMenuRepository_FindByRestaurantId (0.47s)
+    --- PASS: TestMenuRepository_FindByRestaurantId/find_menus_by_restaurant_id (0.47s)
+=== RUN   TestMenuRepository_LifecycleTransitions
+=== RUN   TestMenuRepository_LifecycleTransitions/should_persist_events_for_menu_transitions
+    menu_repository_test.go:169: 
+        	Error Trace:	/home/souza/projects/food-ordering-ddd/catalog/internal/adapters/output/repository/menu_repository_test.go:169
+        	Error:      	Not equal: 
+        	            	expected: 4
+        	            	actual  : 3
+        	Test:       	TestMenuRepository_LifecycleTransitions/should_persist_events_for_menu_transitions
+    menu_repository_test.go:175: 
+        	Error Trace:	/home/souza/projects/food-ordering-ddd/catalog/internal/adapters/output/repository/menu_repository_test.go:175
+        	Error:      	Not equal: 
+        	            	expected: 5
+        	            	actual  : 4
+        	Test:       	TestMenuRepository_LifecycleTransitions/should_persist_events_for_menu_transitions
+    menu_repository_test.go:182: 
+        	Error Trace:	/home/souza/projects/food-ordering-ddd/catalog/internal/adapters/output/repository/menu_repository_test.go:182
+        	Error:      	Not equal: 
+        	            	expected: 6
+        	            	actual  : 5
+        	Test:       	TestMenuRepository_LifecycleTransitions/should_persist_events_for_menu_transitions
+    menu_repository_test.go:188: 
+        	Error Trace:	/home/souza/projects/food-ordering-ddd/catalog/internal/adapters/output/repository/menu_repository_test.go:188
+        	Error:      	Not equal: 
+        	            	expected: 7
+        	            	actual  : 6
+        	Test:       	TestMenuRepository_LifecycleTransitions/should_persist_events_for_menu_transitions
+--- FAIL: TestMenuRepository_LifecycleTransitions (0.55s)
+    --- FAIL: TestMenuRepository_LifecycleTransitions/should_persist_events_for_menu_transitions (0.55s)
+=== RUN   TestOutboxRepository_FindUnpublishedEvents
+=== RUN   TestOutboxRepository_FindUnpublishedEvents/return_empty_when_there_are_no_event
+=== RUN   TestOutboxRepository_FindUnpublishedEvents/return_only_unpublished_events
+=== RUN   TestOutboxRepository_FindUnpublishedEvents/respect_limit
+=== RUN   TestOutboxRepository_FindUnpublishedEvents/return_events_ordered_by_ASC
+--- PASS: TestOutboxRepository_FindUnpublishedEvents (1.57s)
+    --- PASS: TestOutboxRepository_FindUnpublishedEvents/return_empty_when_there_are_no_event (0.36s)
+    --- PASS: TestOutboxRepository_FindUnpublishedEvents/return_only_unpublished_events (0.39s)
+    --- PASS: TestOutboxRepository_FindUnpublishedEvents/respect_limit (0.42s)
+    --- PASS: TestOutboxRepository_FindUnpublishedEvents/return_events_ordered_by_ASC (0.40s)
+=== RUN   TestOutboxRepository_MarkAsPublished
+=== RUN   TestOutboxRepository_MarkAsPublished/non_existing_uuid_does_not_return_error
+=== RUN   TestOutboxRepository_MarkAsPublished/mark_existing_event_as_published
+=== RUN   TestOutboxRepository_MarkAsPublished/marking_already_published_event_is_idempotent
+--- PASS: TestOutboxRepository_MarkAsPublished (1.16s)
+    --- PASS: TestOutboxRepository_MarkAsPublished/non_existing_uuid_does_not_return_error (0.37s)
+    --- PASS: TestOutboxRepository_MarkAsPublished/mark_existing_event_as_published (0.39s)
+    --- PASS: TestOutboxRepository_MarkAsPublished/marking_already_published_event_is_idempotent (0.40s)
+=== RUN   TestRestaurantRepository_Save
+=== RUN   TestRestaurantRepository_Save/save_new_restaurant_successfully
+=== RUN   TestRestaurantRepository_Save/update_existing_restaurant
+--- PASS: TestRestaurantRepository_Save (0.80s)
+    --- PASS: TestRestaurantRepository_Save/save_new_restaurant_successfully (0.39s)
+    --- PASS: TestRestaurantRepository_Save/update_existing_restaurant (0.41s)
+=== RUN   TestRestaurantRepository_FindById
+=== RUN   TestRestaurantRepository_FindById/restaurant_not_found
+=== RUN   TestRestaurantRepository_FindById/restaurant_found
+--- PASS: TestRestaurantRepository_FindById (0.79s)
+    --- PASS: TestRestaurantRepository_FindById/restaurant_not_found (0.37s)
+    --- PASS: TestRestaurantRepository_FindById/restaurant_found (0.42s)
+=== RUN   TestRestaurantRepository_FindAll
+=== RUN   TestRestaurantRepository_FindAll/find_all_returns_all_restaurants
+--- PASS: TestRestaurantRepository_FindAll (0.40s)
+    --- PASS: TestRestaurantRepository_FindAll/find_all_returns_all_restaurants (0.40s)
+=== RUN   TestRestaurantRepository_StateTransitions
+=== RUN   TestRestaurantRepository_StateTransitions/should_persist_events_for_opening_and_closing
+--- PASS: TestRestaurantRepository_StateTransitions (0.42s)
+    --- PASS: TestRestaurantRepository_StateTransitions/should_persist_events_for_opening_and_closing (0.42s)
+FAIL
+2026/02/21 23:49:16 🐳 Stopping container: dec93a646dd1
+2026/02/21 23:49:21 ✅ Container stopped: dec93a646dd1
+2026/02/21 23:49:21 🐳 Terminating container: dec93a646dd1
+2026/02/21 23:49:21 🚫 Container terminated: dec93a646dd1
+FAIL	github.com/vterry/food-ordering/catalog/internal/adapters/output/repository	31.633s
+FAIL
