@@ -105,7 +105,7 @@ func runMigrations(db *sql.DB) {
 }
 
 func truncateTables(db *sql.DB) {
-	tables := []string{"items", "categories", "menus", "outbox_events", "restaurant"}
+	tables := []string{"items", "categories", "menus", "outbox_events", "restaurants"}
 
 	db.Exec("SET FOREIGN_KEY_CHECKS = 0")
 	for _, table := range tables {

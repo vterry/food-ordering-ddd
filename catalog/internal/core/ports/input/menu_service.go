@@ -15,5 +15,4 @@ type MenuService interface {
 	AddCategory(ctx context.Context, menuId valueobjects.MenuID, req AddCategoryRequest) error
 	AddItemToCategory(ctx context.Context, menuId valueobjects.MenuID, categoryId valueobjects.CategoryID, req AddItemRequest) error
 	UpdateItem(ctx context.Context, menuId valueobjects.MenuID, categoryId valueobjects.CategoryID, itemId valueobjects.ItemID, req UpdateItemRequest) error
-	ValidateOrder(ctx context.Context, req ValidateOrderRequest) (*ValidateOrderResponse, error)
 }

@@ -50,12 +50,14 @@ func (c *CatalogServer) Run() error {
 	outboxRepo := repository.NewOutboxRepository(c.db)
 	menuRepo := repository.NewMenuRepository(c.db, outboxRepo)
 	restaurantRepo := repository.NewRestaurantRepository(c.db, outboxRepo)
+	catalogQueryRepo := repository.NewCatalogQueryRepository(c.db)
 	unitOfWork := repository.NewUnitOfWork(c.db)
 
 	assignMenuService := services.NewMenuAssignmentService()
 
 	menuAppService := app.NewMenuAppService(assignMenuService, unitOfWork, menuRepo, restaurantRepo)
 	restaurantAppService := app.NewRestaurantAppService(unitOfWork, restaurantRepo)
+	catalogQueryService := app.NewCatalogQueryAppService(catalogQueryRepo)
 
 	restMenuHandler := rest.NewMenuHandler(menuAppService, c.logger)
 	restRestaurantHandler := rest.NewRestaurantHandler(restaurantAppService, c.logger)
@@ -92,7 +94,7 @@ func (c *CatalogServer) Run() error {
 		}
 
 		grpcServer := grpc.NewServer()
-		catalogServer := grpcAdapter.NewCatalogGrpcServer(menuAppService)
+		catalogServer := grpcAdapter.NewCatalogGrpcServer(catalogQueryService)
 		pb.RegisterCatalogServiceServer(grpcServer, catalogServer)
 		c.grpcServer = grpcServer
 

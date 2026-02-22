@@ -9,10 +9,10 @@ import (
 
 type CatalogGrpcServer struct {
 	pb.UnimplementedCatalogServiceServer
-	menuService input.MenuService
+	menuService input.CatalogQueryService
 }
 
-func NewCatalogGrpcServer(menuService input.MenuService) *CatalogGrpcServer {
+func NewCatalogGrpcServer(menuService input.CatalogQueryService) *CatalogGrpcServer {
 	return &CatalogGrpcServer{
 		menuService: menuService,
 	}

@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/vterry/food-ordering/catalog/internal/core/domain/enums"
 	"github.com/vterry/food-ordering/catalog/internal/core/domain/menu"
@@ -193,70 +192,4 @@ func (m *MenuAppService) UpdateItem(ctx context.Context, menuId valueobjects.Men
 	return m.uow.Run(ctx, func(ctxTx context.Context) error {
 		return m.menuRepository.Save(ctxTx, menu)
 	})
-}
-
-func (m *MenuAppService) ValidateOrder(ctx context.Context, req input.ValidateOrderRequest) (*input.ValidateOrderResponse, error) {
-	restId, err := valueobjects.ParseRestaurantId(req.RestaurantID)
-	if err != nil {
-		return nil, err
-	}
-
-	rest, err := m.restaurantRepository.FindById(ctx, restId)
-	if err != nil {
-		return nil, err
-	}
-
-	if !rest.CanAcceptOrder() {
-		return &input.ValidateOrderResponse{
-			Valid:            false,
-			ValidationErrors: []string{"restaurant is closed or has no active menu"},
-		}, nil
-	}
-
-	activeMenu, err := m.menuRepository.FindActiveMenuByRestaurantId(ctx, restId)
-	if err != nil {
-		return nil, err
-	}
-	if activeMenu == nil {
-		// defensive: restaurant reports it can accept orders but no active menu found (data inconsistency)
-		return &input.ValidateOrderResponse{
-			Valid:            false,
-			ValidationErrors: []string{"restaurant has no active menu"},
-		}, nil
-	}
-
-	return m.validateItems(activeMenu, req.ItemIDs)
-}
-
-func (m *MenuAppService) validateItems(activeMenu *menu.Menu, itemIDs []string) (*input.ValidateOrderResponse, error) {
-	response := &input.ValidateOrderResponse{
-		Valid: true,
-		Items: make([]input.ItemSnapshot, 0, len(itemIDs)),
-	}
-
-	parsedIDs := make([]valueobjects.ItemID, 0, len(itemIDs))
-	for _, idStr := range itemIDs {
-		id, err := valueobjects.ParseItemId(idStr)
-		if err != nil {
-			response.Valid = false
-			response.ValidationErrors = append(response.ValidationErrors, fmt.Sprintf("invalid item ID format: %s", idStr))
-			continue
-		}
-		parsedIDs = append(parsedIDs, id)
-	}
-
-	for _, result := range activeMenu.ValidateItems(parsedIDs) {
-		if result.Error != "" {
-			response.Valid = false
-			response.ValidationErrors = append(response.ValidationErrors, result.Error)
-			continue
-		}
-		response.Items = append(response.Items, input.ItemSnapshot{
-			ID:         result.Item.ItemID.String(),
-			Name:       result.Item.Name(),
-			PriceCents: result.Item.BasePrice().Amount(),
-		})
-	}
-
-	return response, nil
 }

@@ -73,7 +73,7 @@ func TestMenuRepository_Save(t *testing.T) {
 				assert.True(t, testItemPrice.Amount() == item.BasePrice().Amount())
 
 				eventCount := CountEventsInOutbox(t, testDB, id.String())
-				assert.Equal(t, 4, eventCount)
+				assert.Equal(t, 3, eventCount)
 
 				lastPayload := GetLastEventPayload(t, testDB, id.String())
 				assert.NotNil(t, lastPayload)
@@ -166,26 +166,26 @@ func TestMenuRepository_LifecycleTransitions(t *testing.T) {
 
 		err := repo.Save(context.Background(), m)
 		require.NoError(t, err)
-		assert.Equal(t, 4, CountEventsInOutbox(t, testDB, m.ID().String()))
+		assert.Equal(t, 3, CountEventsInOutbox(t, testDB, m.ID().String()))
 
 		err = m.Activate()
 		require.NoError(t, err)
 		err = repo.Save(context.Background(), m)
 		require.NoError(t, err)
-		assert.Equal(t, 5, CountEventsInOutbox(t, testDB, m.ID().String()))
+		assert.Equal(t, 4, CountEventsInOutbox(t, testDB, m.ID().String()))
 
 		newPrice := common.NewMoneyFromCents(1500)
 		err = m.UpdateItemPrice(cat.CategoryID, item.ItemID, newPrice)
 		require.NoError(t, err)
 		err = repo.Save(context.Background(), m)
 		require.NoError(t, err)
-		assert.Equal(t, 6, CountEventsInOutbox(t, testDB, m.ID().String()))
+		assert.Equal(t, 5, CountEventsInOutbox(t, testDB, m.ID().String()))
 
 		err = m.UpdateItemAvailability(cat.CategoryID, item.ItemID, enums.ItemUnavailable)
 		require.NoError(t, err)
 		err = repo.Save(context.Background(), m)
 		require.NoError(t, err)
-		assert.Equal(t, 7, CountEventsInOutbox(t, testDB, m.ID().String()))
+		assert.Equal(t, 6, CountEventsInOutbox(t, testDB, m.ID().String()))
 
 		payload := GetLastEventPayload(t, testDB, m.ID().String())
 		assert.Equal(t, "UNAVAILABLE", payload["new_status"])

@@ -80,6 +80,22 @@ var (
 	SELECT id, uuid, name, address_street, address_number, address_compl, address_neigh, address_city, address_state, address_zipcode, status, active_menu_id, created_at, updated_at
 	FROM restaurants`
 
+	QueryFindOrderValidationData = `
+SELECT 
+    r.uuid       AS restaurant_uuid,
+    r.status     AS restaurant_status,
+    (r.active_menu_id IS NOT NULL) AS has_active_menu,
+    i.uuid       AS item_uuid,
+    i.name       AS item_name,
+    i.price_cents,
+    i.status     AS item_status
+FROM restaurants r
+LEFT JOIN menus m ON m.uuid = r.active_menu_id
+LEFT JOIN categories c ON c.menu_id = m.id
+LEFT JOIN items i ON i.category_id = c.id AND i.uuid IN (%s)
+WHERE r.uuid = ?;
+	`
+
 	QueryInsertOutboxEvent = `
 	INSERT INTO outbox_events (uuid, aggregate_id, aggregate_type, type, payload, occurred_on, published_at)
 	VALUES (?,?,?,?,?,?,NULL)`
