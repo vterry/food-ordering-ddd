@@ -1,41 +1,24 @@
 # Catalog Domain - TODO
 
-> Última atualização: 2026-02-21
+> Última atualização: 2026-02-22
 > Ref. arquitetural: `docs/ARCHITECTURE.md`
 
 ---
 
 ## 🎯 Próximo Passo
 
-### 1. Correções do Code Review (~30min)
+### 1. Robustez do Server Lifecycle
 
-- [ ] `server_test.go` — Mock implementa `MenuService` (9 métodos, 8 com `panic`), mas o gRPC server agora depende de `CatalogQueryService` (1 método). Simplificar o mock.
-- [ ] `menu_service_test.go` — `ItemID{}` zero-value no setup. Trocar por `NewItemID()`.
-- [ ] `menu_service_test.go` — `NewMenu()` criado e descartado na sequência por `Restore()`. Remover linha morta.
-- [ ] `menu_service_test.go` — Apenas 2 cenários para `ActiveMenu`. Adicionar: menu não encontrado, restaurante não encontrado, menu já ativo, assignment falha.
-
-### 2. Testes de Handler REST (Unit)
-
-- [ ] `RestaurantHandler`: criar restaurante, erros de validação, not found
-- [ ] `MenuHandler`: criar menu, ativar, arquivar, adicionar categoria/item
-
-### 3. Teste E2E (Integração Completa)
-
-- [ ] Criar Restaurante → Criar Menu → Adicionar Itens → Ativar → Buscar Ativo
-
-### 4. Robustez do Server Lifecycle
-
-- [ ] Graceful Shutdown com requisições em andamento (drain)
-- [ ] Startup Lento/Timeouts (NotifyReady channel)
+- [ ] Graceful Shutdown com requisições em andamento (drain) — testar com requests em voo
+- [ ] Startup Lento/Timeouts (NotifyReady channel) — testar cenários de falha na inicialização
 
 ---
 
 ## 🛠 Débitos Técnicos
 
-- [ ] **Error Types** — `errormap.go` acopla REST aos pacotes internos via `errors.Is`. Criar `NotFoundError`/`ValidationError` no Core e usar `errors.As`.
 - [ ] **Outbox DLQ** — Se RabbitMQ cair, processor trava em loop. Adicionar `retry_count` + Dead Letter Queue local.
-- [ ] **Infra (`server.go` / `rabbitmq_publisher.go`)** — Goroutines do gRPC vazam silenciosamente; `close(NotifyReady)` sem `sync.Once`; `PublishWithContext` sem timeout.
 - [ ] Health Checks gRPC (`grpc.health.v1`)
+- [ ] **OutboxProcessor** — Sem testes unitários (goroutine + ticker). Considerar testes de integração.
 
 ---
 
@@ -83,3 +66,23 @@
 - [x] Demeter fixes, UoW leak, HTTP status codes, error mapper
 - [x] ACL parsing movido para handlers, DTO tags corrigidas
 - [x] Código morto removido, typos corrigidos, Saga pattern definido
+
+### Correções Code Review + Testes (2026-02-22) ✅
+- [x] `server_test.go` — Mock simplificado para `CatalogQueryService` (1 método)
+- [x] `menu_service_test.go` — `NewItemID()`, dead code removido, +4 cenários ActiveMenu
+- [x] **Error Types refactoring** — Interfaces `NotFoundErr`/`BusinessRuleErr`/`ValidationErr` em `common/pkg`, wrappers genéricos com `Unwrap()`, domínio e repositórios wrapam sentinels, `errormap.go` desacoplado (zero imports de domínio)
+- [x] **Handler REST tests** — `restaurant_handler_test.go` (17 cenários), `menu_handler_test.go` (31 cenários) usando `testify/mock` + `httptest`
+- [x] **App Service tests** — `menu_service_test.go` +24 cenários (8 métodos cobertos), `restaurant_service_test.go` 15 cenários (4 métodos) — `core/app` de 21.1% → 75.4%
+- [x] Cobertura: REST 92.9%, gRPC 100%, App 75.4%, Domain 81-100%
+
+### Teste E2E — Full Menu Lifecycle (2026-02-22) ✅
+- [x] HTTP E2E com Testcontainers (MySQL real) — stack completa: Handler → Service → Domain → Repository → MySQL
+- [x] Fluxo: Create Restaurant → Create Menu → Add Category → Add Item → Activate → GetActive → Verify Assignment → Verify Outbox (6 events)
+- [x] Localizado em `internal/e2e/full_lifecycle_test.go`
+
+### Débitos Técnicos Corrigidos (2026-02-22) ✅
+- [x] **UUID Parse Errors** — `ParseRestaurantId`/`ParseMenuId`/`ParseCategoryId`/`ParseItemId` agora wrapam com `common.NewValidationErr()` → retornam 400 (antes: 500)
+- [x] **gRPC goroutine leak** — `grpc.Server` agora é criado ANTES da goroutine, evitando race condition no `Stop()`
+- [x] **`close(NotifyReady)` panic** — Protegido com `sync.Once` para evitar double-close
+- [x] **`PublishWithContext` sem timeout** — Adicionado `context.WithTimeout(ctx, 5s)` no publisher RabbitMQ
+- [x] **Duplicate if-err** em `server.go` removido
