@@ -77,7 +77,10 @@ func wireApplication(db *sql.DB) *http.ServeMux {
 	menuAppService := app.NewMenuAppService(assignMenuService, unitOfWork, menuRepo, restaurantRepo)
 	restaurantAppService := app.NewRestaurantAppService(unitOfWork, restaurantRepo)
 
-	menuHandler := rest.NewMenuHandler(menuAppService, logger)
+	catalogQueryRepo := repository.NewCatalogQueryRepository(db)
+	catalogQueryService := app.NewCatalogQueryAppService(catalogQueryRepo)
+
+	menuHandler := rest.NewMenuHandler(menuAppService, catalogQueryService, logger)
 	restaurantHandler := rest.NewRestaurantHandler(restaurantAppService, logger)
 
 	mux := http.NewServeMux()

@@ -65,7 +65,7 @@ func (c *CatalogServer) Run() error {
 	restaurantAppService := app.NewRestaurantAppService(unitOfWork, restaurantRepo)
 	catalogQueryService := app.NewCatalogQueryAppService(catalogQueryRepo)
 
-	restMenuHandler := rest.NewMenuHandler(menuAppService, c.logger)
+	restMenuHandler := rest.NewMenuHandler(menuAppService, catalogQueryService, c.logger)
 	restRestaurantHandler := rest.NewRestaurantHandler(restaurantAppService, c.logger)
 
 	publisher, err := messaging.NewRabbitMQPublisher(c.pubChan, c.cfg.OutboxCfg.ExchangeName, c.logger)

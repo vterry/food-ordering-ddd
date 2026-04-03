@@ -378,55 +378,6 @@ func TestMenuAppService_GetMenu(t *testing.T) {
 	}
 }
 
-func TestMenuAppService_GetActiveMenu(t *testing.T) {
-	ctx := context.Background()
-	restID := valueobjects.NewRestaurantID()
-	menuID := valueobjects.NewMenuID()
-	menuAgg := menu.Restore(menuID, "Menu Ativo", restID, enums.MenuActive, []menu.Category{})
-
-	tests := []struct {
-		name        string
-		mockSetup   func(mRepo *mockMenuRepo)
-		expectError bool
-	}{
-		{
-			name: "should return active menu successfully",
-			mockSetup: func(mRepo *mockMenuRepo) {
-				mRepo.findActiveMenuByRestaurantIdMock = func(_ context.Context, _ valueobjects.RestaurantID) (*menu.Menu, error) {
-					return menuAgg, nil
-				}
-			},
-		},
-		{
-			name: "should return error when no active menu found",
-			mockSetup: func(mRepo *mockMenuRepo) {
-				mRepo.findActiveMenuByRestaurantIdMock = func(_ context.Context, _ valueobjects.RestaurantID) (*menu.Menu, error) {
-					return nil, errors.New("not found")
-				}
-			},
-			expectError: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			mRepo := &mockMenuRepo{}
-			tt.mockSetup(mRepo)
-
-			service := NewMenuAppService(&mockAssigner{}, &mockUoW{}, mRepo, &mockRestaurantRepo{})
-			resp, err := service.GetActiveMenu(ctx, restID)
-
-			if tt.expectError {
-				assert.Error(t, err)
-				assert.Nil(t, resp)
-			} else {
-				assert.NoError(t, err)
-				assert.NotNil(t, resp)
-				assert.Equal(t, "Menu Ativo", resp.Name)
-			}
-		})
-	}
-}
 
 func TestMenuAppService_ArchiveMenu(t *testing.T) {
 	ctx := context.Background()

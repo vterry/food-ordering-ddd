@@ -19,6 +19,10 @@ func (m *mockCatalogQueryRepo) FindOrderValidationData(ctx context.Context, rest
 	return m.findOrderValidationDataMock(ctx, restaurantID, itemIDs)
 }
 
+func (m *mockCatalogQueryRepo) FindActiveMenuRows(ctx context.Context, restaurantId string) ([]output.ActiveMenuRow, error) {
+	return nil, nil // Return empty mock for now, tests not testing this
+}
+
 func TestCatalogQueryAppService_ValidateOrder(t *testing.T) {
 	ctx := context.Background()
 

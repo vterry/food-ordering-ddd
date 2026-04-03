@@ -5,16 +5,10 @@
 
 ---
 
-## 🎯 Próximo Passo
+## 🟡 Pendências Técnicas (Sessão Atual)
 
-*(Sem atividades pendentes para o momento)*
-
----
-
-## 🛠 Débitos Técnicos
-
-- [x] **Outbox DLQ** — Se RabbitMQ cair, processor trava em loop. Adicionar `retry_count` + Dead Letter Queue local.
-- [x] Health Checks gRPC (`grpc.health.v1`)
+- [ ] Refatorar rota `GET /restaurant/{id}/menu` para usar **CQRS/Query Store Puro**, evitando a hidratação pesada do _Aggregation Root_ `Menu` e retornando DTO direto do banco de dados otimizado.
+- [ ] Enriquecer testes unitários e de integração existentes com validações rígidas de cenários de erro e exceptions de domínio.
 
 ---
 
@@ -27,7 +21,6 @@
 - [ ] Istio Configuration
 
 ---
-
 ## ✅ Concluído
 
 ### Infraestrutura
@@ -82,3 +75,7 @@
 - [x] **`close(NotifyReady)` panic** — Protegido com `sync.Once` para evitar double-close
 - [x] **`PublishWithContext` sem timeout** — Adicionado `context.WithTimeout(ctx, 5s)` no publisher RabbitMQ
 - [x] **Duplicate if-err** em `server.go` removido
+
+### Débitos Técnicos Corrigidos (2026-02-22) ✅
+- [x] **Outbox DLQ** — Se RabbitMQ cair, processor trava em loop. Adicionar `retry_count` + Dead Letter Queue local.
+- [x] Health Checks gRPC (`grpc.health.v1`)

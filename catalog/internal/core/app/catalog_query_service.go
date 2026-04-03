@@ -7,6 +7,7 @@ import (
 	"github.com/vterry/food-ordering/catalog/internal/core/domain/enums"
 	"github.com/vterry/food-ordering/catalog/internal/core/ports/input"
 	"github.com/vterry/food-ordering/catalog/internal/core/ports/output"
+	common "github.com/vterry/food-ordering/common/pkg"
 )
 
 var _ input.CatalogQueryService = (*CatalogQueryAppService)(nil)
@@ -19,6 +20,57 @@ func NewCatalogQueryAppService(queryRepo output.CatalogQueryRepository) *Catalog
 	return &CatalogQueryAppService{
 		queryRepo: queryRepo,
 	}
+}
+
+func (c *CatalogQueryAppService) GetActiveMenu(ctx context.Context, restaurantId string) (*input.MenuResponse, error) {
+	data, err := c.queryRepo.FindActiveMenuRows(ctx, restaurantId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if len(data) == 0 {
+		return nil, common.NewNotFoundErr(output.ErrEntityNotFound)
+	}
+
+	menu := &input.MenuResponse{
+		ID:           data[0].MenuID,
+		Name:         data[0].MenuName,
+		RestaurantID: restaurantId,
+		Status:       data[0].MenuStatus,
+		Categories:   make([]*input.CategoryResponse, 0),
+	}
+
+	categoryMap := make(map[string]*input.CategoryResponse)
+
+	for _, row := range data {
+		if !row.CategoryID.Valid {
+			continue
+		}
+
+		cat, exists := categoryMap[row.CategoryID.String]
+		if !exists {
+			cat = &input.CategoryResponse{
+				ID:    row.CategoryID.String,
+				Name:  row.CategoryName.String,
+				Items: make([]*input.ItemResponse, 0),
+			}
+			categoryMap[row.CategoryID.String] = cat
+			menu.Categories = append(menu.Categories, cat)
+		}
+		if !row.ItemID.Valid {
+			continue
+		}
+		item := &input.ItemResponse{
+			ID:          row.ItemID.String,
+			Name:        row.ItemName.String,
+			Description: row.ItemDescription.String,
+			PriceCents:  row.ItemPriceCents.Int64,
+			Status:      row.ItemStatus.String,
+		}
+		cat.Items = append(cat.Items, item)
+	}
+	return menu, nil
 }
 
 func (c *CatalogQueryAppService) ValidateOrder(ctx context.Context, req input.ValidateOrderRequest) (*input.ValidateOrderResponse, error) {

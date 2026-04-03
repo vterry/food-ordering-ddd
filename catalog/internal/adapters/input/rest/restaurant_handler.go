@@ -23,9 +23,10 @@ func NewRestaurantHandler(appService input.RestaurantService, logger *slog.Logge
 
 func (r *RestaurantHandler) RegisterRoutes(mux *http.ServeMux) {
 	loggerMw := middleware.LoggerMiddleware(r.logger)
+	istioMw := middleware.IstioHeadersMiddleware()
 
 	chain := func(h http.HandlerFunc) http.Handler {
-		return middleware.Chain(h, loggerMw)
+		return middleware.Chain(h, loggerMw, istioMw)
 	}
 
 	mux.Handle("POST /restaurant", chain(r.handleCreateRestaurant))

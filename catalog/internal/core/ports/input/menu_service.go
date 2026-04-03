@@ -9,7 +9,6 @@ import (
 type MenuService interface {
 	CreateMenu(ctx context.Context, restId valueobjects.RestaurantID, req CreateMenuRequest) (*MenuResponse, error)
 	GetMenu(ctx context.Context, menuId valueobjects.MenuID) (*MenuResponse, error)
-	GetActiveMenu(ctx context.Context, restId valueobjects.RestaurantID) (*MenuResponse, error)
 	ActiveMenu(ctx context.Context, menuId valueobjects.MenuID) error
 	ArchiveMenu(ctx context.Context, menuId valueobjects.MenuID) error
 	AddCategory(ctx context.Context, menuId valueobjects.MenuID, req AddCategoryRequest) error

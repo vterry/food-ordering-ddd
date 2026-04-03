@@ -10,22 +10,25 @@ import (
 )
 
 type MenuHandler struct {
-	appService input.MenuService
-	logger     *slog.Logger
+	appService   input.MenuService
+	queryService input.CatalogQueryService
+	logger       *slog.Logger
 }
 
-func NewMenuHandler(appService input.MenuService, logger *slog.Logger) *MenuHandler {
+func NewMenuHandler(appService input.MenuService, queryService input.CatalogQueryService, logger *slog.Logger) *MenuHandler {
 	return &MenuHandler{
-		appService: appService,
-		logger:     logger,
+		appService:   appService,
+		queryService: queryService,
+		logger:       logger,
 	}
 }
 
 func (m *MenuHandler) RegisterRoutes(mux *http.ServeMux) {
 	loggerMw := middleware.LoggerMiddleware(m.logger)
+	istioMw := middleware.IstioHeadersMiddleware()
 
 	chain := func(h http.HandlerFunc) http.Handler {
-		return middleware.Chain(h, loggerMw)
+		return middleware.Chain(h, loggerMw, istioMw)
 	}
 
 	mux.Handle("POST /restaurant/{id}/menu", chain(m.handleCreateMenu))
@@ -71,7 +74,7 @@ func (m *MenuHandler) handleGetActiveMenu(res http.ResponseWriter, req *http.Req
 		return
 	}
 
-	menuResponse, err := m.appService.GetActiveMenu(req.Context(), restaurantId)
+	menuResponse, err := m.queryService.GetActiveMenu(req.Context(), restaurantId.String())
 	if err != nil {
 		handleAppError(res, req, err)
 		return

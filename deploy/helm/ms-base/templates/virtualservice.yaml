@@ -1,0 +1,21 @@
+{{- if .Values.istio.virtualService.create -}}
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  hosts:
+  - "*"
+  gateways:
+  - {{ .Values.istio.gateway.name | default (printf "%s-gateway" .Release.Name) }}
+  http:
+  - match:
+    - uri:
+        prefix: {{ .Values.istio.virtualService.prefix }}
+    route:
+    - destination:
+        host: {{ .Release.Name }}
+        port:
+          number: {{ .Values.service.port }}
+{{- end }}

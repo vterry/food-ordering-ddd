@@ -67,15 +67,7 @@ func (m *MenuAppService) GetMenu(ctx context.Context, menuId valueobjects.MenuID
 	return toMenuResponse(menu), nil
 }
 
-func (m *MenuAppService) GetActiveMenu(ctx context.Context, restaurantId valueobjects.RestaurantID) (*input.MenuResponse, error) {
 
-	menu, err := m.menuRepository.FindActiveMenuByRestaurantId(ctx, restaurantId)
-	if err != nil {
-		return nil, err
-	}
-
-	return toMenuResponse(menu), nil
-}
 
 func (m *MenuAppService) ActiveMenu(ctx context.Context, menuId valueobjects.MenuID) error {
 

@@ -141,7 +141,7 @@ func (m *MenuRepository) FindActiveMenuByRestaurantId(ctx context.Context, resta
 	}
 
 	if len(menus) == 0 {
-		return nil, nil
+		return nil, common.NewNotFoundErr(output.ErrEntityNotFound)
 	}
 
 	return menus[0], nil

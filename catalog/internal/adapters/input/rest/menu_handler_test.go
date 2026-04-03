@@ -40,8 +40,20 @@ func (m *mockMenuService) GetMenu(ctx context.Context, menuId valueobjects.MenuI
 	return args.Get(0).(*input.MenuResponse), args.Error(1)
 }
 
-func (m *mockMenuService) GetActiveMenu(ctx context.Context, restId valueobjects.RestaurantID) (*input.MenuResponse, error) {
-	args := m.Called(ctx, restId)
+type mockCatalogQueryService struct {
+	mock.Mock
+}
+
+func (m *mockCatalogQueryService) ValidateOrder(ctx context.Context, req input.ValidateOrderRequest) (*input.ValidateOrderResponse, error) {
+	args := m.Called(ctx, req)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*input.ValidateOrderResponse), args.Error(1)
+}
+
+func (m *mockCatalogQueryService) GetActiveMenu(ctx context.Context, restaurantId string) (*input.MenuResponse, error) {
+	args := m.Called(ctx, restaurantId)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -75,8 +87,8 @@ func (m *mockMenuService) UpdateItem(ctx context.Context, menuId valueobjects.Me
 
 // ===== Helpers =====
 
-func setupMenuHandler(svc *mockMenuService) *http.ServeMux {
-	handler := NewMenuHandler(svc, slog.Default())
+func setupMenuHandler(svc *mockMenuService, qSvc *mockCatalogQueryService) *http.ServeMux {
+	handler := NewMenuHandler(svc, qSvc, slog.Default())
 	mux := http.NewServeMux()
 	handler.RegisterRoutes(mux)
 	return mux
@@ -155,8 +167,9 @@ func TestMenuHandler_CreateMenu(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			svc := new(mockMenuService)
+			qSvc := new(mockCatalogQueryService)
 			tt.mockSetup(svc)
-			mux := setupMenuHandler(svc)
+			mux := setupMenuHandler(svc, qSvc)
 
 			req := httptest.NewRequest(http.MethodPost, "/restaurant/"+tt.pathID+"/menu", strings.NewReader(tt.body))
 			req.Header.Set("Content-Type", "application/json")
@@ -169,6 +182,7 @@ func TestMenuHandler_CreateMenu(t *testing.T) {
 				assert.Contains(t, rec.Body.String(), tt.expectedBody)
 			}
 			svc.AssertExpectations(t)
+			qSvc.AssertExpectations(t)
 		})
 	}
 }
@@ -179,14 +193,14 @@ func TestMenuHandler_GetActiveMenu(t *testing.T) {
 	tests := []struct {
 		name           string
 		pathID         string
-		mockSetup      func(svc *mockMenuService)
+		mockSetup      func(svc *mockCatalogQueryService)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name:   "should return active menu and 200",
 			pathID: validRestUUID,
-			mockSetup: func(svc *mockMenuService) {
+			mockSetup: func(svc *mockCatalogQueryService) {
 				svc.On("GetActiveMenu", mock.Anything, mock.Anything).
 					Return(&input.MenuResponse{
 						ID: "menu-uuid", Name: "Menu Ativo", RestaurantID: validRestUUID, Status: "ACTIVE",
@@ -199,13 +213,13 @@ func TestMenuHandler_GetActiveMenu(t *testing.T) {
 		{
 			name:           "should return error when restaurant ID is not a valid UUID",
 			pathID:         "not-a-uuid",
-			mockSetup:      func(svc *mockMenuService) {},
+			mockSetup:      func(svc *mockCatalogQueryService) {},
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name:   "should return 404 when no active menu found",
 			pathID: validRestUUID,
-			mockSetup: func(svc *mockMenuService) {
+			mockSetup: func(svc *mockCatalogQueryService) {
 				svc.On("GetActiveMenu", mock.Anything, mock.Anything).
 					Return(nil, common.NewNotFoundErr(errors.New("no active menu"))).Once()
 			},
@@ -216,8 +230,9 @@ func TestMenuHandler_GetActiveMenu(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			svc := new(mockMenuService)
-			tt.mockSetup(svc)
-			mux := setupMenuHandler(svc)
+			qSvc := new(mockCatalogQueryService)
+			tt.mockSetup(qSvc)
+			mux := setupMenuHandler(svc, qSvc)
 
 			req := httptest.NewRequest(http.MethodGet, "/restaurant/"+tt.pathID+"/menu", nil)
 			rec := httptest.NewRecorder()
@@ -229,6 +244,7 @@ func TestMenuHandler_GetActiveMenu(t *testing.T) {
 				assert.Contains(t, rec.Body.String(), tt.expectedBody)
 			}
 			svc.AssertExpectations(t)
+			qSvc.AssertExpectations(t)
 		})
 	}
 }
@@ -293,8 +309,9 @@ func TestMenuHandler_ActivateMenu(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			svc := new(mockMenuService)
+			qSvc := new(mockCatalogQueryService)
 			tt.mockSetup(svc)
-			mux := setupMenuHandler(svc)
+			mux := setupMenuHandler(svc, qSvc)
 
 			req := httptest.NewRequest(http.MethodPatch, "/menu/"+tt.pathID+"/activate", nil)
 			rec := httptest.NewRecorder()
@@ -306,6 +323,7 @@ func TestMenuHandler_ActivateMenu(t *testing.T) {
 				assert.Contains(t, rec.Body.String(), tt.expectedBody)
 			}
 			svc.AssertExpectations(t)
+			qSvc.AssertExpectations(t)
 		})
 	}
 }
@@ -360,8 +378,9 @@ func TestMenuHandler_ArchiveMenu(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			svc := new(mockMenuService)
+			qSvc := new(mockCatalogQueryService)
 			tt.mockSetup(svc)
-			mux := setupMenuHandler(svc)
+			mux := setupMenuHandler(svc, qSvc)
 
 			req := httptest.NewRequest(http.MethodPatch, "/menu/"+tt.pathID+"/archive", nil)
 			rec := httptest.NewRecorder()
@@ -373,6 +392,7 @@ func TestMenuHandler_ArchiveMenu(t *testing.T) {
 				assert.Contains(t, rec.Body.String(), tt.expectedBody)
 			}
 			svc.AssertExpectations(t)
+			qSvc.AssertExpectations(t)
 		})
 	}
 }
@@ -445,8 +465,9 @@ func TestMenuHandler_AddCategory(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			svc := new(mockMenuService)
+			qSvc := new(mockCatalogQueryService)
 			tt.mockSetup(svc)
-			mux := setupMenuHandler(svc)
+			mux := setupMenuHandler(svc, qSvc)
 
 			req := httptest.NewRequest(http.MethodPost, "/menu/"+tt.pathMenuID+"/categories", strings.NewReader(tt.body))
 			req.Header.Set("Content-Type", "application/json")
@@ -459,6 +480,7 @@ func TestMenuHandler_AddCategory(t *testing.T) {
 				assert.Contains(t, rec.Body.String(), tt.expectedBody)
 			}
 			svc.AssertExpectations(t)
+			qSvc.AssertExpectations(t)
 		})
 	}
 }
@@ -547,8 +569,9 @@ func TestMenuHandler_AddItemToCategory(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			svc := new(mockMenuService)
+			qSvc := new(mockCatalogQueryService)
 			tt.mockSetup(svc)
-			mux := setupMenuHandler(svc)
+			mux := setupMenuHandler(svc, qSvc)
 
 			path := "/menu/" + tt.pathMenuID + "/categories/" + tt.pathCatID + "/item"
 			req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(tt.body))
@@ -562,6 +585,7 @@ func TestMenuHandler_AddItemToCategory(t *testing.T) {
 				assert.Contains(t, rec.Body.String(), tt.expectedBody)
 			}
 			svc.AssertExpectations(t)
+			qSvc.AssertExpectations(t)
 		})
 	}
 }
@@ -668,8 +692,9 @@ func TestMenuHandler_UpdateItem(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			svc := new(mockMenuService)
+			qSvc := new(mockCatalogQueryService)
 			tt.mockSetup(svc)
-			mux := setupMenuHandler(svc)
+			mux := setupMenuHandler(svc, qSvc)
 
 			path := "/menu/" + tt.pathMenuID + "/categories/" + tt.pathCatID + "/items/" + tt.pathItemID
 			req := httptest.NewRequest(http.MethodPut, path, strings.NewReader(tt.body))
@@ -683,6 +708,7 @@ func TestMenuHandler_UpdateItem(t *testing.T) {
 				assert.Contains(t, rec.Body.String(), tt.expectedBody)
 			}
 			svc.AssertExpectations(t)
+			qSvc.AssertExpectations(t)
 		})
 	}
 }

@@ -21,6 +21,10 @@ func (m *mockCatalogQueryService) ValidateOrder(ctx context.Context, req input.V
 	return nil, errors.New("validateOrderFunc not set")
 }
 
+func (m *mockCatalogQueryService) GetActiveMenu(ctx context.Context, restaurantId string) (*input.MenuResponse, error) {
+	return nil, nil
+}
+
 func TestCatalogGrpcServer_ValidateRestaurantAndItems(t *testing.T) {
 	tests := []struct {
 		name           string

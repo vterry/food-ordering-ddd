@@ -96,34 +96,48 @@ LEFT JOIN items i ON i.category_id = c.id AND i.uuid IN (%s)
 WHERE r.uuid = ?;
 	`
 
+	QueryCatalogFindActiveMenuRows = `
+	SELECT 
+			m.uuid, m.name, m.status,
+			c.uuid, c.name,
+			i.uuid, i.name, i.description, i.price_cents, i.status
+	FROM menus m
+	LEFT JOIN categories c ON c.menu_id = m.id
+	LEFT JOIN items i ON i.category_id = c.id
+	WHERE m.restaurant_id = ? 
+		AND m.status = 'ACTIVE' 
+		AND (i.status = 'AVAILABLE' OR i.status IS NULL)
+	ORDER BY c.id, i.id ASC
+`
+
 	QueryInsertOutboxEvent = `
-	INSERT INTO outbox_events (uuid, aggregate_id, aggregate_type, type, payload, occurred_on, published_at)
-	VALUES (?,?,?,?,?,?,NULL)`
+INSERT INTO outbox_events (uuid, aggregate_id, aggregate_type, type, payload, occurred_on, published_at)
+VALUES (?,?,?,?,?,?,NULL)`
 
 	QueryFindUnpublishedEvents = `
-	SELECT id, uuid, aggregate_id, aggregate_type, type, payload, occurred_on, retry_count
-	FROM outbox_events
-	WHERE published_at IS NULL
-	ORDER BY id ASC
-	LIMIT ?
-	FOR UPDATE SKIP LOCKED
-	`
+SELECT id, uuid, aggregate_id, aggregate_type, type, payload, occurred_on, retry_count
+FROM outbox_events
+WHERE published_at IS NULL
+ORDER BY id ASC
+LIMIT ?
+FOR UPDATE SKIP LOCKED
+`
 
 	QueryMarkAsPublished = `
-	UPDATE outbox_events
-	SET published_at = NOW()
-	WHERE uuid = ?`
+UPDATE outbox_events
+SET published_at = NOW()
+WHERE uuid = ?`
 
 	QueryIncrementRetryCount = `
-	UPDATE outbox_events SET retry_count = retry_count + 1 WHERE uuid = ? 
-	`
+UPDATE outbox_events SET retry_count = retry_count + 1 WHERE uuid = ? 
+`
 
 	QueryInsertOutboxDLQ = `
-	INSERT INTO outbox_dlq (id, aggregate_id, aggregate_type, event_type, payload, occurred_on, retry_count, error_reason)
-	VALUES (?,?,?,?,?,?,?,?)
-	`
+INSERT INTO outbox_dlq (id, aggregate_id, aggregate_type, event_type, payload, occurred_on, retry_count, error_reason)
+VALUES (?,?,?,?,?,?,?,?)
+`
 
 	QueryDeleteFromOutbox = `
-	DELETE FROM outbox_events WHERE uuid = ?
-	`
+DELETE FROM outbox_events WHERE uuid = ?
+`
 )
