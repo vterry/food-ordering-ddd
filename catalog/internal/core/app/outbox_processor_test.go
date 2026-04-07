@@ -17,11 +17,11 @@ import (
 // ---- MOCKS ----
 
 type MockOutboxRepository struct {
-	SaveEventsFunc            func(ctx context.Context, aggregateID, aggregateType string, events []common.DomainEvent) error
-	FindUnpublishedEventsFunc func(ctx context.Context, limit int) ([]output.OutboxEvent, error)
-	MarkAsPublishedFunc       func(ctx context.Context, eventID uuid.UUID) error
-	IncrementRetryFunc        func(ctx context.Context, eventID uuid.UUID) error
-	MoveToDLQFunc             func(ctx context.Context, event output.OutboxEvent, reason string) error
+	SaveEventsFunc         func(ctx context.Context, aggregateID, aggregateType string, events []common.DomainEvent) error
+	ClaimAndFindEventsFunc func(ctx context.Context, processorID string, limit int, claimTTL time.Duration) ([]output.OutboxEvent, error)
+	MarkAsPublishedFunc    func(ctx context.Context, eventID uuid.UUID) error
+	IncrementRetryFunc     func(ctx context.Context, eventID uuid.UUID) error
+	MoveToDLQFunc          func(ctx context.Context, event output.OutboxEvent, reason string) error
 }
 
 func (m *MockOutboxRepository) SaveEvents(ctx context.Context, aggregateID, aggregateType string, events []common.DomainEvent) error {
@@ -31,9 +31,9 @@ func (m *MockOutboxRepository) SaveEvents(ctx context.Context, aggregateID, aggr
 	return nil
 }
 
-func (m *MockOutboxRepository) FindUnpublishedEvents(ctx context.Context, limit int) ([]output.OutboxEvent, error) {
-	if m.FindUnpublishedEventsFunc != nil {
-		return m.FindUnpublishedEventsFunc(ctx, limit)
+func (m *MockOutboxRepository) ClaimAndFindEvents(ctx context.Context, processorID string, limit int, claimTTL time.Duration) ([]output.OutboxEvent, error) {
+	if m.ClaimAndFindEventsFunc != nil {
+		return m.ClaimAndFindEventsFunc(ctx, processorID, limit, claimTTL)
 	}
 	return nil, nil
 }
@@ -89,7 +89,7 @@ func TestOutboxProcessor_ProcessBatch(t *testing.T) {
 		}
 
 		mockRepo := &MockOutboxRepository{
-			FindUnpublishedEventsFunc: func(ctx context.Context, limit int) ([]output.OutboxEvent, error) {
+			ClaimAndFindEventsFunc: func(ctx context.Context, processorID string, limit int, claimTTL time.Duration) ([]output.OutboxEvent, error) {
 				return events, nil
 			},
 			MarkAsPublishedFunc: func(ctx context.Context, id uuid.UUID) error {
@@ -119,7 +119,7 @@ func TestOutboxProcessor_ProcessBatch(t *testing.T) {
 
 		var movedToDLQ bool
 		mockRepo := &MockOutboxRepository{
-			FindUnpublishedEventsFunc: func(ctx context.Context, limit int) ([]output.OutboxEvent, error) {
+			ClaimAndFindEventsFunc: func(ctx context.Context, processorID string, limit int, claimTTL time.Duration) ([]output.OutboxEvent, error) {
 				return events, nil
 			},
 			MoveToDLQFunc: func(ctx context.Context, event output.OutboxEvent, reason string) error {
@@ -150,7 +150,7 @@ func TestOutboxProcessor_ProcessBatch(t *testing.T) {
 		}
 
 		mockRepo := &MockOutboxRepository{
-			FindUnpublishedEventsFunc: func(ctx context.Context, limit int) ([]output.OutboxEvent, error) {
+			ClaimAndFindEventsFunc: func(ctx context.Context, processorID string, limit int, claimTTL time.Duration) ([]output.OutboxEvent, error) {
 				return events, nil
 			},
 		}
@@ -176,7 +176,7 @@ func TestOutboxProcessor_ProcessBatch(t *testing.T) {
 
 		var retryIncremented bool
 		mockRepo := &MockOutboxRepository{
-			FindUnpublishedEventsFunc: func(ctx context.Context, limit int) ([]output.OutboxEvent, error) {
+			ClaimAndFindEventsFunc: func(ctx context.Context, processorID string, limit int, claimTTL time.Duration) ([]output.OutboxEvent, error) {
 				return events, nil
 			},
 			IncrementRetryFunc: func(ctx context.Context, id uuid.UUID) error {
@@ -207,7 +207,7 @@ func TestOutboxProcessor_ProcessBatch(t *testing.T) {
 
 		var movedToDLQ bool
 		mockRepo := &MockOutboxRepository{
-			FindUnpublishedEventsFunc: func(ctx context.Context, limit int) ([]output.OutboxEvent, error) {
+			ClaimAndFindEventsFunc: func(ctx context.Context, processorID string, limit int, claimTTL time.Duration) ([]output.OutboxEvent, error) {
 				return events, nil
 			},
 			MoveToDLQFunc: func(ctx context.Context, event output.OutboxEvent, reason string) error {
@@ -229,5 +229,61 @@ func TestOutboxProcessor_ProcessBatch(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.True(t, movedToDLQ)
+	})
+
+	t.Run("Falha de DB ao mover para DLQ: Aborta o batch", func(t *testing.T) {
+		eventID := uuid.New()
+		events := []output.OutboxEvent{
+			{UUID: eventID, RetryCount: 0},
+		}
+
+		mockRepo := &MockOutboxRepository{
+			ClaimAndFindEventsFunc: func(ctx context.Context, processorID string, limit int, claimTTL time.Duration) ([]output.OutboxEvent, error) {
+				return events, nil
+			},
+			MoveToDLQFunc: func(ctx context.Context, event output.OutboxEvent, reason string) error {
+				return errors.New("database connection lost")
+			},
+		}
+
+		mockPublisher := &MockEventPublisher{
+			PublishFunc: func(ctx context.Context, message output.EventMessage) error {
+				return common.NewUnrecoverableErr(errors.New("poison message"))
+			},
+		}
+
+		processor := NewOutboxProcessor(mockRepo, mockPublisher, mockUoW, 1*time.Second, 10, 3, logger)
+		err := processor.processBatch(context.Background())
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "database connection lost")
+	})
+
+	t.Run("Falha de DB ao marcar publicado: Aborta o batch", func(t *testing.T) {
+		eventID := uuid.New()
+		events := []output.OutboxEvent{
+			{UUID: eventID, RetryCount: 0},
+		}
+
+		mockRepo := &MockOutboxRepository{
+			ClaimAndFindEventsFunc: func(ctx context.Context, processorID string, limit int, claimTTL time.Duration) ([]output.OutboxEvent, error) {
+				return events, nil
+			},
+			MarkAsPublishedFunc: func(ctx context.Context, id uuid.UUID) error {
+				return errors.New("database timeout")
+			},
+		}
+
+		mockPublisher := &MockEventPublisher{
+			PublishFunc: func(ctx context.Context, message output.EventMessage) error {
+				return nil
+			},
+		}
+
+		processor := NewOutboxProcessor(mockRepo, mockPublisher, mockUoW, 1*time.Second, 10, 3, logger)
+		err := processor.processBatch(context.Background())
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "database timeout")
 	})
 }

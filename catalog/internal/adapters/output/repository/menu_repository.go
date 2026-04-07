@@ -92,10 +92,11 @@ func (m *MenuRepository) Save(ctx context.Context, menuAgg *menu.Menu) error {
 		}
 	}
 
-	if err := m.outbox.SaveEvents(ctx, menuAgg.String(), "Menu", menuAgg.PullEvent()); err != nil {
+	if err := m.outbox.SaveEvents(ctx, menuAgg.String(), "Menu", menuAgg.Events()); err != nil {
 		return err
 	}
 
+	menuAgg.ClearEvents()
 	return nil
 }
 

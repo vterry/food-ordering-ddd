@@ -646,9 +646,10 @@ Para cada microserviço (Ordering, Payment, Restaurant, Delivery, Catalog):[web:
 
 ## 7. Ordem sugerida de implementação
 
-1. **Catálogo + Ordering (monolito modular)**:
-   - Implementar agregados `Order`, `Restaurant`, `Menu` e casos de uso de `PlaceOrder` e `CreateMenu`.
-2. **Extrair Payment como microserviço**:
+1. **Catálogo (Microserviço Infraestrutura Base)**:
+   - Implementar agregados `Restaurant`, `Menu` e Infra Kubernetes (Istio + Helm).
+2. **Ordering (Saga Orchestrator)**:
+   - Implementar `Order`, gRPC Sync, e publicação de Sagas no Outbox.
    - Implementar eventos `OrderPlaced`, `PaymentAuthorized`, `PaymentFailed` e outbox.
 3. **Adicionar Restaurant Management**:
    - `RestaurantOrderCreated`, `RestaurantOrderAccepted`, `RestaurantOrderRejected`.

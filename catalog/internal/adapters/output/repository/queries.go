@@ -114,13 +114,20 @@ WHERE r.uuid = ?;
 INSERT INTO outbox_events (uuid, aggregate_id, aggregate_type, type, payload, occurred_on, published_at)
 VALUES (?,?,?,?,?,?,NULL)`
 
-	QueryFindUnpublishedEvents = `
-SELECT id, uuid, aggregate_id, aggregate_type, type, payload, occurred_on, retry_count
-FROM outbox_events
+	QueryClaimOutboxEvents = `
+UPDATE outbox_events
+SET claimed_by = ?, claimed_at = NOW()
 WHERE published_at IS NULL
+  AND (claimed_by IS NULL OR claimed_at < DATE_SUB(NOW(), INTERVAL ? SECOND))
 ORDER BY id ASC
 LIMIT ?
-FOR UPDATE SKIP LOCKED
+`
+
+	QueryFindClaimedEvents = `
+SELECT id, uuid, aggregate_id, aggregate_type, type, payload, occurred_on, retry_count
+FROM outbox_events
+WHERE claimed_by = ? AND published_at IS NULL
+ORDER BY id ASC
 `
 
 	QueryMarkAsPublished = `

@@ -111,6 +111,14 @@ func (r *Restaurant) AddEvent(events ...common.DomainEvent) {
 	r.events = append(r.events, events...)
 }
 
+func (r *Restaurant) Events() []common.DomainEvent {
+	return r.events
+}
+
+func (r *Restaurant) ClearEvents() {
+	r.events = nil
+}
+
 func (r *Restaurant) PullEvent() []common.DomainEvent {
 	events := r.events
 	r.events = nil

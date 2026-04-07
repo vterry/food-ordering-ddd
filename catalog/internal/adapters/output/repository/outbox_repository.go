@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/vterry/food-ordering/catalog/internal/adapters/output/repository/dao"
@@ -47,13 +48,18 @@ func (o *OutboxRepository) SaveEvents(ctx context.Context, aggregateID, aggregat
 	return nil
 }
 
-func (o *OutboxRepository) FindUnpublishedEvents(ctx context.Context, limit int) ([]output.OutboxEvent, error) {
-
+func (o *OutboxRepository) ClaimAndFindEvents(ctx context.Context, processorID string, limit int, claimTTL time.Duration) ([]output.OutboxEvent, error) {
 	executor := getExecutor(ctx, o.db)
 
-	rows, err := executor.QueryContext(ctx, QueryFindUnpublishedEvents, limit)
+	claimTTLSeconds := int(claimTTL.Seconds())
+	_, err := executor.ExecContext(ctx, QueryClaimOutboxEvents, processorID, claimTTLSeconds, limit)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to claim outbox events: %w", err)
+	}
+
+	rows, err := executor.QueryContext(ctx, QueryFindClaimedEvents, processorID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find claimed events: %w", err)
 	}
 	defer rows.Close()
 

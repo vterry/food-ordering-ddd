@@ -291,6 +291,14 @@ func (m *Menu) AddEvent(events ...common.DomainEvent) {
 	m.events = append(m.events, events...)
 }
 
+func (m *Menu) Events() []common.DomainEvent {
+	return m.events
+}
+
+func (m *Menu) ClearEvents() {
+	m.events = nil
+}
+
 func (m *Menu) PullEvent() []common.DomainEvent {
 	events := m.events
 	m.events = nil

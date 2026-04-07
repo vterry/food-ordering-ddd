@@ -11,7 +11,7 @@ import (
 	"github.com/vterry/food-ordering/catalog/internal/core/ports/output"
 )
 
-func TestOutboxRepository_FindUnpublishedEvents(t *testing.T) {
+func TestOutboxRepository_ClaimAndFindEvents(t *testing.T) {
 	repo := NewOutboxRepository(testDB)
 
 	orderedUUIDs := []string{
@@ -75,6 +75,27 @@ func TestOutboxRepository_FindUnpublishedEvents(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "does not claim events already claimed by another processor",
+			seed: func(t *testing.T) {
+				payload := []byte(`{"teste": true}`)
+				seedUnpublishedEvent(t, uuid.New().String(), uuid.New().String(), "AggTypeTest", "EventTypeTest", payload)
+				seedClaimedEvent(t, uuid.New().String(), uuid.New().String(), "AggTypeTest", "EventTypeTest", payload, "other-processor")
+			},
+
+			limit:     10,
+			wantCount: 1,
+		},
+		{
+			name: "reclaims stale events from dead processors",
+			seed: func(t *testing.T) {
+				payload := []byte(`{"teste": true}`)
+				seedStaleClaimedEvent(t, uuid.New().String(), uuid.New().String(), "AggTypeTest", "EventTypeTest", payload, "dead-processor")
+			},
+
+			limit:     10,
+			wantCount: 1,
+		},
 	}
 
 	for _, tt := range tests {
@@ -82,7 +103,8 @@ func TestOutboxRepository_FindUnpublishedEvents(t *testing.T) {
 			truncateTables(testDB)
 			tt.seed(t)
 
-			events, err := repo.FindUnpublishedEvents(context.Background(), tt.limit)
+			processorID := "test-processor-1"
+			events, err := repo.ClaimAndFindEvents(context.Background(), processorID, tt.limit, output.DefaultClaimTTL)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -125,7 +147,7 @@ func TestOutboxRepository_MarkAsPublished(t *testing.T) {
 			},
 			wantErr: false,
 			assertFunc: func(t *testing.T) {
-				event, err := repo.FindUnpublishedEvents(context.Background(), 10)
+				event, err := repo.ClaimAndFindEvents(context.Background(), "test-proc", 10, output.DefaultClaimTTL)
 				assert.NoError(t, err)
 				assert.Empty(t, event)
 			},
@@ -140,7 +162,7 @@ func TestOutboxRepository_MarkAsPublished(t *testing.T) {
 			},
 			wantErr: false,
 			assertFunc: func(t *testing.T) {
-				event, err := repo.FindUnpublishedEvents(context.Background(), 10)
+				event, err := repo.ClaimAndFindEvents(context.Background(), "test-proc", 10, output.DefaultClaimTTL)
 				assert.NoError(t, err)
 				assert.Empty(t, event)
 			},
@@ -178,5 +200,20 @@ func seedPublishedEvent(t *testing.T, uuid, aggId, aggType, eventType string, pa
 	t.Helper()
 	const q = `INSERT INTO outbox_events (uuid, aggregate_id, aggregate_type, type, payload, occurred_on, published_at) VALUES (?,?,?,?,?,?,?)`
 	_, err := testDB.ExecContext(context.Background(), q, uuid, aggId, aggType, eventType, payload, time.Now(), time.Now())
+	require.NoError(t, err)
+}
+
+func seedClaimedEvent(t *testing.T, uuid, aggId, aggType, eventType string, payload []byte, claimedBy string) {
+	t.Helper()
+	const q = `INSERT INTO outbox_events (uuid, aggregate_id, aggregate_type, type, payload, occurred_on, claimed_by, claimed_at) VALUES (?,?,?,?,?,?,?,?)`
+	_, err := testDB.ExecContext(context.Background(), q, uuid, aggId, aggType, eventType, payload, time.Now(), claimedBy, time.Now())
+	require.NoError(t, err)
+}
+
+func seedStaleClaimedEvent(t *testing.T, uuid, aggId, aggType, eventType string, payload []byte, claimedBy string) {
+	t.Helper()
+	staleTime := time.Now().Add(-10 * time.Minute) // 10min ago, well past the 5min TTL
+	const q = `INSERT INTO outbox_events (uuid, aggregate_id, aggregate_type, type, payload, occurred_on, claimed_by, claimed_at) VALUES (?,?,?,?,?,?,?,?)`
+	_, err := testDB.ExecContext(context.Background(), q, uuid, aggId, aggType, eventType, payload, time.Now(), claimedBy, staleTime)
 	require.NoError(t, err)
 }

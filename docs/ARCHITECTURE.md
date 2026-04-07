@@ -4,8 +4,8 @@
 
 | Context        | Role                                                       | Status         |
 | -------------- | ---------------------------------------------------------- | -------------- |
-| **Catalog**    | Manages restaurants, menus, categories, items              | 🟡 In Progress |
-| **Ordering**   | Manages order lifecycle (create, confirm, cancel, deliver) | 🔴 Not Started |
+| **Catalog**    | Manages restaurants, menus, categories, items              | 🟢 Completed   |
+| **Ordering**   | Manages order lifecycle (create, confirm, cancel, deliver) | 🟡 Next (WIP)  |
 | **Payment**    | Handles payment authorization, capture, void, refunds      | 🔴 Not Started |
 | **Restaurant** | Accepts/rejects orders from restaurant perspective         | 🔴 Not Started |
 | **Delivery**   | Assigns couriers, tracks delivery                          | 🔴 Not Started |
@@ -160,3 +160,9 @@ The Catalog module is NOT affected by this decision — it only:
 | 2026-02-18 | Void vs Refund distinction based on capture state   | Payment      | ✅ Active         |
 | 2026-02-18 | FAILED status added to Order (distinct from CANCELLED) | Ordering   | ✅ Active         |
 | 2026-02-18 | Full refund on customer-refused delivery (simplification) | Payment/Ordering | ✅ Active |
+| 2026-04-03 | CQRS (Left Join Reducer) adopted for optimized active menu queries | Catalog | ✅ Active |
+| 2026-04-03 | Istio L7 Policies (RequestAuthentication/AuthorizationPolicy) for zero-trust | Security | ✅ Active |
+| 2026-04-03 | Reusable Helm Chart (`ms-base`) abstraction for continuous deployment | Infra | ✅ Active |
+| 2026-04-05 | Outbox Processor: error propagation on DB write failures (no silent `_ =`) | Catalog | ✅ Active |
+| 2026-04-05 | Outbox Processor: claim-based locking for concurrent processor safety | All contexts | ✅ Active |
+| 2026-04-05 | Consumer-side idempotency via `processed_events` table (dedup by EventID) | Ordering (future) | ⏳ Pending (implement with Ordering) |

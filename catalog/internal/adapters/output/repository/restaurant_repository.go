@@ -54,10 +54,11 @@ func (r *RestaurantRepository) Save(ctx context.Context, agg *restaurant.Restaur
 		return fmt.Errorf("failed to upsert restaurant: %w", err)
 	}
 
-	if err := r.outbox.SaveEvents(ctx, agg.String(), "Restaurant", agg.PullEvent()); err != nil {
+	if err := r.outbox.SaveEvents(ctx, agg.String(), "Restaurant", agg.Events()); err != nil {
 		return err
 	}
 
+	agg.ClearEvents()
 	return nil
 }
 
