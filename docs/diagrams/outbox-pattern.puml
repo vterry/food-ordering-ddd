@@ -1,0 +1,23 @@
+@startuml Outbox_Pattern
+!theme plain
+skinparam backgroundColor #FEFEFE
+
+title Outbox Pattern — Fluxo
+
+participant "Application\nService" as app
+database "MySQL" as db
+participant "Outbox\nPoller" as poller
+queue "RabbitMQ" as mq
+
+app -> db : BEGIN TX
+app -> db : UPDATE aggregate state
+app -> db : INSERT INTO outbox_messages\n(id, aggregate_type, event_type,\npayload, created_at, published_at=NULL)
+app -> db : COMMIT TX
+
+loop "A cada N ms"
+    poller -> db : SELECT * FROM outbox_messages\nWHERE published_at IS NULL\nORDER BY created_at\nLIMIT batch_size
+    poller -> mq : Publish events
+    poller -> db : UPDATE outbox_messages\nSET published_at = NOW()\nWHERE id IN (...)
+end
+
+@enduml

@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "skills": {
+    "architecture-designer": {
+      "source": "jeffallan/claude-skills",
+      "sourceType": "github",
+      "computedHash": "baf0fa47580f4e9fd1fd910cbc2e800edace76e3506823110b5ecfd761a9a9bf"
+    },
+    "golang-pro": {
+      "source": "jeffallan/claude-skills",
+      "sourceType": "github",
+      "computedHash": "517209072b5cbeb7dfdb41f634ecff658e34e7c9e081e425d618378e9818a941"
+    },
+    "microservices-architect": {
+      "source": "jeffallan/claude-skills",
+      "sourceType": "github",
+      "computedHash": "cde138470adaa161e6cb36fc29c468862d77a1d9c6e4943e5a13265d2138184c"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+@startuml Idempotent_Consumer
+!theme plain
+skinparam backgroundColor #FEFEFE
+
+title Idempotent Consumer — Fluxo
+
+queue "RabbitMQ" as mq
+participant "Message\nConsumer" as consumer
+database "MySQL" as db
+
+mq -> consumer : Deliver message\n(messageId, payload)
+activate consumer
+
+consumer -> db : SELECT COUNT(*) FROM processed_messages\nWHERE message_id = ?
+alt Mensagem já processada
+    consumer -> consumer : Skip (ACK without processing)
+    consumer -> mq : ACK
+else Mensagem nova
+    consumer -> db : BEGIN TX
+    consumer -> db : INSERT INTO processed_messages\n(message_id, processed_at)
+    consumer -> db : Process business logic
+    consumer -> db : INSERT INTO outbox_messages\n(response events)
+    consumer -> db : COMMIT TX
+    consumer -> mq : ACK
+end
+deactivate consumer
+
+@enduml

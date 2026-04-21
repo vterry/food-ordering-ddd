@@ -1,0 +1,45 @@
+@startuml OrderSaga_StateMachine
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam state {
+    BackgroundColor LightYellow
+    BorderColor DarkGoldenRod
+}
+
+title Saga de Criação de Pedido — Máquina de Estados
+
+[*] --> CREATED : Cliente submete pedido
+
+CREATED --> AUTHORIZING_PAYMENT : Enviar AuthorizePayment
+AUTHORIZING_PAYMENT --> REJECTED : PaymentAuthorizationFailed
+AUTHORIZING_PAYMENT --> AWAITING_RESTAURANT : PaymentAuthorized\n→ Enviar CreateTicket
+
+AWAITING_RESTAURANT --> CANCELLING : Cliente cancela\n→ Enviar CancelTicket\n+ ReleasePayment
+AWAITING_RESTAURANT --> RESTAURANT_REJECTED : TicketRejected\n→ Enviar ReleasePayment
+AWAITING_RESTAURANT --> CAPTURING_PAYMENT : TicketConfirmed\n→ Enviar CapturePayment
+
+RESTAURANT_REJECTED --> CANCELLED : PaymentReleased
+
+CAPTURING_PAYMENT --> SCHEDULING_DELIVERY : PaymentCaptured\n→ Enviar ScheduleDelivery
+CAPTURING_PAYMENT --> CAPTURE_FAILED : PaymentCaptureFailed\n→ Enviar CancelTicket
+
+CAPTURE_FAILED --> CANCELLED : TicketCancelled
+
+SCHEDULING_DELIVERY --> PREPARING : DeliveryScheduled
+
+PREPARING --> READY : TicketReady
+
+READY --> OUT_FOR_DELIVERY : DeliveryPickedUp
+
+OUT_FOR_DELIVERY --> DELIVERED : DeliveryCompleted
+OUT_FOR_DELIVERY --> DELIVERY_REFUSED : DeliveryRefused\n→ Enviar RefundPayment
+
+DELIVERY_REFUSED --> CANCELLED : PaymentRefunded
+
+CANCELLING --> CANCELLED : PaymentReleased\n+ TicketCancelled
+
+REJECTED --> [*]
+CANCELLED --> [*]
+DELIVERED --> [*]
+
+@enduml

@@ -1,0 +1,23 @@
+@startuml C4_Context
+!theme plain
+skinparam backgroundColor #FEFEFE
+
+title Food Ordering Platform — Diagrama de Contexto
+
+actor "Cliente\n(Usuário)" as customer
+actor "Restaurante" as restaurant
+actor "Entregador" as courier
+
+package "Food Ordering Platform" as system {
+    rectangle "API Gateway\n(HTTP)" as gateway #LightBlue
+}
+
+rectangle "Gateway de\nPagamento\n(Externo)" as paymentGW #LightCoral
+
+customer --> gateway : "HTTP/REST"
+restaurant --> gateway : "HTTP/REST"
+courier --> gateway : "HTTP/REST"
+gateway --> system
+system --> paymentGW : "HTTPS"
+
+@enduml

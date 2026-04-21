@@ -1,0 +1,294 @@
+openapi: 3.0.3
+info:
+  title: Food Ordering Platform - Customer Service
+  version: 1.0.0
+  description: API for managing customers, addresses, and shopping carts.
+servers:
+  - url: http://localhost:8080/api/v1
+
+paths:
+  /customers:
+    post:
+      summary: Register a new customer
+      operationId: RegisterCustomer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterCustomerRequest'
+      responses:
+        '201':
+          description: Customer created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IDResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /customers/{id}:
+    get:
+      summary: Get customer details
+      operationId: GetCustomer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Customer details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /customers/{id}/addresses:
+    post:
+      summary: Add an address to a customer
+      operationId: AddAddress
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddAddressRequest'
+      responses:
+        '204':
+          description: Address added
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /customers/{id}/cart:
+    get:
+      summary: Get customer's shopping cart
+      operationId: GetCart
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Cart details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+
+    delete:
+      summary: Clear the entire cart
+      operationId: ClearCart
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Cart cleared
+
+  /customers/{id}/cart/items:
+    post:
+      summary: Add an item to the cart
+      operationId: AddItemToCart
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddItemRequest'
+      responses:
+        '200':
+          description: Item added
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /customers/{id}/cart/items/{product_id}:
+    put:
+      summary: Update item quantity in the cart
+      operationId: UpdateItemQuantity
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateItemRequest'
+      responses:
+        '204':
+          description: Item updated
+
+    delete:
+      summary: Remove an item from the cart
+      operationId: RemoveItemFromCart
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Item removed
+
+  /customers/{id}/cart/checkout:
+    post:
+      summary: Checkout the current cart
+      operationId: Checkout
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '202':
+          description: Checkout accepted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+components:
+  schemas:
+    RegisterCustomerRequest:
+      type: object
+      required: [name, email, phone]
+      properties:
+        name: { type: string }
+        email: { type: string, format: email }
+        phone: { type: string }
+
+    IDResponse:
+      type: object
+      properties:
+        id: { type: string }
+
+    AddAddressRequest:
+      type: object
+      required: [street, city, zip_code]
+      properties:
+        street: { type: string }
+        city: { type: string }
+        zip_code: { type: string }
+        is_default: { type: boolean }
+
+    AddItemRequest:
+      type: object
+      required: [restaurant_id, product_id, name, price, quantity]
+      properties:
+        restaurant_id: { type: string }
+        product_id: { type: string }
+        name: { type: string }
+        price: { type: number }
+        currency: { type: string, default: BRL }
+        quantity: { type: integer }
+        observation: { type: string }
+
+    UpdateItemRequest:
+      type: object
+      required: [quantity]
+      properties:
+        quantity: { type: integer }
+
+    Customer:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string }
+        phone: { type: string }
+        addresses:
+          type: array
+          items:
+            $ref: '#/components/schemas/Address'
+
+    Address:
+      type: object
+      properties:
+        id: { type: string }
+        street: { type: string }
+        city: { type: string }
+        zip_code: { type: string }
+        is_default: { type: boolean }
+
+    Cart:
+      type: object
+      properties:
+        customer_id: { type: string }
+        restaurant_id: { type: string }
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItem'
+        total: { type: number }
+
+    CartItem:
+      type: object
+      properties:
+        product_id: { type: string }
+        name: { type: string }
+        price: { type: number }
+        quantity: { type: integer }
+        observation: { type: string }
+
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string }
+        message: { type: string }
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: Conflict with existing state
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'

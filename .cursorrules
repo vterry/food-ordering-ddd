@@ -1,0 +1,13 @@
+# Regras Globais do Projeto (Agentic Rules)
+
+## Gestão de Estado e Handoff
+1. **Regra de Manutenção do Projeto:** Você (o agente de IA) é o único responsável primário por manter o rastreamento do progresso.
+2. **Atualização Automática:** Ao finalizar uma funcionalidade, ao fim de um ciclo de refatoração, ou quando estiver claro que a sessão de desenvolvimento atual está chegando ao fim (por exemplo, após implementar uma série de tickets gerando um pacote funcional), **atualize automaticamente** o arquivo `docs/PROJECT_STATE.md`.
+3. **Não espere pelo usuário:** Não dependa de um pedido explícito ("atualize o estado" ou "gere o handoff") para manter o `docs/PROJECT_STATE.md` atualizado se houver mudanças arquiteturais, novos serviços criados, ou fluxos finalizados. Seja proativo.
+4. **Formato do Estado:** O `docs/PROJECT_STATE.md` deve sempre conter de forma resumida e concisa:
+   - O que foi feito recentemente.
+   - Onde paramos.
+   - Quais são os "Próximos Passos" (Next Actions) acionáveis.
+
+## Skills e Contexto
+- A pasta `.skills` contém expertise sobre Golang, Microserviços e Arquitetura. Invoque e leia esses arquivos (ex: `@[.skills/.agents/skills/golang-pro/SKILL.md]`) sempre que tiver dúvidas sobre decisões de implementação, linting ou padrões de concorrência.

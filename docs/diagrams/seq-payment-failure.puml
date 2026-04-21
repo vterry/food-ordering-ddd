@@ -1,0 +1,31 @@
+@startuml OrderCreation_PaymentFail
+!theme plain
+skinparam backgroundColor #FEFEFE
+
+title Fluxo de Compensação — Falha na Autorização do Pagamento
+
+actor Cliente as C
+participant "API Gateway" as GW
+participant "Ordering\nService" as OS
+participant "Payment\nService" as PS
+queue "RabbitMQ" as MQ
+
+C -> GW : POST /orders
+GW -> OS : CreateOrder
+activate OS
+
+OS -> OS : Criar Order (status=CREATED)
+OS -> MQ : Publish: AuthorizePayment
+
+MQ -> PS : Consume: AuthorizePayment
+activate PS
+PS -> PS : Chamar Payment Gateway\n(RECUSADO)
+PS -> MQ : Publish: PaymentAuthorizationFailed
+deactivate PS
+
+MQ -> OS : Consume: PaymentAuthorizationFailed
+OS -> OS : Order.status = REJECTED
+OS --> GW : Notificar cliente:\n"Pagamento recusado"
+deactivate OS
+
+@enduml

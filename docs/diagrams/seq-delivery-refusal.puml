@@ -1,0 +1,34 @@
+@startuml Delivery_ClientRefusal
+!theme plain
+skinparam backgroundColor #FEFEFE
+
+title Fluxo de Compensação — Cliente Recusa Recebimento
+
+actor Cliente as C
+participant "Delivery\nService" as DS
+participant "Ordering\nService" as OS
+participant "Payment\nService" as PS
+queue "RabbitMQ" as MQ
+
+C -> DS : Recusar recebimento
+activate DS
+DS -> DS : Delivery.status = REFUSED
+DS -> MQ : Publish: DeliveryRefused
+deactivate DS
+
+MQ -> OS : Consume: DeliveryRefused
+activate OS
+OS -> OS : Order.status = CANCELLED
+OS -> MQ : Publish: RefundPayment
+deactivate OS
+
+MQ -> PS : Consume: RefundPayment
+activate PS
+PS -> PS : Solicitar reembolso\nao gateway
+PS -> MQ : Publish: PaymentRefunded
+deactivate PS
+
+MQ -> OS : Consume: PaymentRefunded
+note over OS : Compensação concluída.\nReembolso processado.\nCliente notificado.
+
+@enduml

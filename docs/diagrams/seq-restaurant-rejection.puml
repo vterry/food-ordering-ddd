@@ -1,0 +1,36 @@
+@startuml OrderCreation_RestaurantReject
+!theme plain
+skinparam backgroundColor #FEFEFE
+
+title Fluxo de Compensação — Restaurante Recusa Pedido
+
+participant "Ordering\nService" as OS
+participant "Restaurant\nService" as RS
+participant "Payment\nService" as PS
+queue "RabbitMQ" as MQ
+
+note over OS : Order.status = AWAITING_RESTAURANT
+
+OS -> MQ : Publish: CreateTicket
+MQ -> RS : Consume: CreateTicket
+activate RS
+RS -> RS : Restaurante recusa\no pedido (sem insumos)
+RS -> MQ : Publish: TicketRejected\n(reason: "Sem insumos")
+deactivate RS
+
+MQ -> OS : Consume: TicketRejected
+activate OS
+OS -> OS : Order.status = CANCELLED
+OS -> MQ : Publish: ReleasePayment
+deactivate OS
+
+MQ -> PS : Consume: ReleasePayment
+activate PS
+PS -> PS : Liberar reserva\nno cartão
+PS -> MQ : Publish: PaymentReleased
+deactivate PS
+
+MQ -> OS : Consume: PaymentReleased
+note over OS : Compensação concluída.\nCliente notificado.
+
+@enduml

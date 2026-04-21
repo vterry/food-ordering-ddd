@@ -1,0 +1,36 @@
+@startuml Hexagonal
+!theme plain
+skinparam backgroundColor #FEFEFE
+
+title Arquitetura Interna — Hexagonal (Ports & Adapters)
+
+package "Adapters (Infrastructure)" #LightGray {
+    rectangle "HTTP Handler" as http #LightBlue
+    rectangle "gRPC Handler" as grpc #LightBlue
+    rectangle "RabbitMQ Consumer" as consumer #Orange
+    rectangle "RabbitMQ Publisher" as publisher #Orange
+    rectangle "MySQL Repository" as repo #LightGreen
+    rectangle "External API Client" as extclient #LightCoral
+}
+
+package "Ports (Interfaces)" #White {
+    rectangle "Input Ports\n(Application Services)" as inputPorts #TECHNOLOGY
+    rectangle "Output Ports\n(Repository / Publisher\nInterfaces)" as outputPorts #TECHNOLOGY
+}
+
+package "Core Domain" #LightYellow {
+    rectangle "Aggregates\nEntities\nValue Objects\nDomain Events\nDomain Services" as domain
+}
+
+http --> inputPorts
+grpc --> inputPorts
+consumer --> inputPorts
+
+inputPorts --> domain : Uses
+domain --> outputPorts : Defines
+
+outputPorts <-- repo : Implements
+outputPorts <-- publisher : Implements
+outputPorts <-- extclient : Implements
+
+@enduml

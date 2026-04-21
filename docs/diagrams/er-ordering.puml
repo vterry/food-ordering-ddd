@@ -1,0 +1,45 @@
+@startuml ER_Ordering
+!theme plain
+skinparam backgroundColor #FEFEFE
+
+title Ordering Service — Modelo de Dados
+
+entity "orders" as orders {
+    * id : CHAR(36) <<PK>>
+    --
+    * customer_id : CHAR(36)
+    * restaurant_id : CHAR(36)
+    * status : ENUM(...)
+    * total_amount : DECIMAL(10,2)
+    * currency : VARCHAR(3)
+    * delivery_address_json : JSON
+    * correlation_id : CHAR(36)
+    * created_at : TIMESTAMP
+    * updated_at : TIMESTAMP
+    * version : INT
+}
+
+entity "order_items" as items {
+    * id : CHAR(36) <<PK>>
+    --
+    * order_id : CHAR(36) <<FK>>
+    * menu_item_id : CHAR(36)
+    * name : VARCHAR(200)
+    * quantity : INT
+    * unit_price : DECIMAL(10,2)
+    * notes : TEXT
+}
+
+entity "saga_state" as saga {
+    * order_id : CHAR(36) <<PK>>
+    --
+    * current_step : VARCHAR(50)
+    * status : ENUM(RUNNING, COMPENSATING, COMPLETED, FAILED)
+    * data_json : JSON
+    * updated_at : TIMESTAMP
+}
+
+orders ||--|{ items : contains
+orders ||--|| saga : has
+
+@enduml

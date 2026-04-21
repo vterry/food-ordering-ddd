@@ -1,0 +1,37 @@
+@startuml Order_ClientCancellation
+!theme plain
+skinparam backgroundColor #FEFEFE
+
+title Fluxo de Cancelamento — Cliente Cancela na Fase de Confirmação
+
+actor Cliente as C
+participant "API Gateway" as GW
+participant "Ordering\nService" as OS
+participant "Restaurant\nService" as RS
+participant "Payment\nService" as PS
+queue "RabbitMQ" as MQ
+
+note over OS : Order.status = AWAITING_RESTAURANT
+
+C -> GW : DELETE /orders/{orderId}
+GW -> OS : CancelOrder(orderId)
+activate OS
+
+OS -> OS : Verificar: status == AWAITING_RESTAURANT?\nSim → permitir cancelamento
+OS -> OS : Order.status = CANCELLED
+OS -> MQ : Publish: CancelTicket
+OS -> MQ : Publish: ReleasePayment
+deactivate OS
+
+MQ -> RS : Consume: CancelTicket
+activate RS
+RS -> RS : Ticket.status = CANCELLED
+deactivate RS
+
+MQ -> PS : Consume: ReleasePayment
+activate PS
+PS -> PS : Liberar reserva no cartão
+PS -> MQ : Publish: PaymentReleased
+deactivate PS
+
+@enduml

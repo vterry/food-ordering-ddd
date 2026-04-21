@@ -1,0 +1,63 @@
+@startuml ER_Restaurant
+!theme plain
+skinparam backgroundColor #FEFEFE
+
+title Restaurant Service — Modelo de Dados
+
+entity "restaurants" as rest {
+    * id : CHAR(36) <<PK>>
+    --
+    * name : VARCHAR(200)
+    * address_json : JSON
+    * active_menu_id : CHAR(36) <<FK>>
+    * is_open : BOOLEAN
+    * created_at : TIMESTAMP
+}
+
+entity "menus" as menu {
+    * id : CHAR(36) <<PK>>
+    --
+    * restaurant_id : CHAR(36) <<FK>>
+    * name : VARCHAR(200)
+    * is_active : BOOLEAN
+    * created_at : TIMESTAMP
+}
+
+entity "menu_items" as menuItem {
+    * id : CHAR(36) <<PK>>
+    --
+    * menu_id : CHAR(36) <<FK>>
+    * name : VARCHAR(200)
+    * description : TEXT
+    * price : DECIMAL(10,2)
+    * category : VARCHAR(100)
+    * is_available : BOOLEAN
+}
+
+entity "tickets" as ticket {
+    * id : CHAR(36) <<PK>>
+    --
+    * order_id : CHAR(36)
+    * restaurant_id : CHAR(36) <<FK>>
+    * status : ENUM(PENDING, CONFIRMED, REJECTED, PREPARING, READY, CANCELLED)
+    * rejection_reason : TEXT
+    * created_at : TIMESTAMP
+    * updated_at : TIMESTAMP
+}
+
+entity "ticket_items" as tktItem {
+    * id : CHAR(36) <<PK>>
+    --
+    * ticket_id : CHAR(36) <<FK>>
+    * menu_item_id : CHAR(36)
+    * name : VARCHAR(200)
+    * quantity : INT
+    * notes : TEXT
+}
+
+rest ||--|{ menu : has
+menu ||--|{ menuItem : contains
+rest ||--|{ ticket : receives
+ticket ||--|{ tktItem : contains
+
+@enduml

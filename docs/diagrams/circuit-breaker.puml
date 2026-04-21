@@ -1,0 +1,18 @@
+@startuml Circuit_Breaker
+!theme plain
+skinparam backgroundColor #FEFEFE
+
+title Circuit Breaker — Estados
+
+state "CLOSED" as closed #LightGreen : Chamadas passam normalmente.\nContador de falhas ativo.
+state "OPEN" as open #LightCoral : Chamadas bloqueadas.\nRetorna fallback imediato.\nTimer de reset ativo.
+state "HALF-OPEN" as halfOpen #LightYellow : Permite N chamadas de teste.\nSe sucesso → CLOSED\nSe falha → OPEN
+
+[*] --> closed
+
+closed --> open : Falhas >= threshold\n(ex: 5 falhas em 60s)
+open --> halfOpen : Timeout expirado\n(ex: 30s)
+halfOpen --> closed : Chamadas de teste\ncom sucesso
+halfOpen --> open : Chamada de teste\nfalhou
+
+@enduml

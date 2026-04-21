@@ -1,0 +1,73 @@
+@startuml C4_Container
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam rectangle {
+    RoundCorner 10
+}
+
+title Food Ordering Platform — Diagrama de Containers
+
+actor "Cliente" as user
+actor "Restaurante" as rest
+actor "Entregador" as courier
+
+rectangle "API Gateway" as gw #LightBlue {
+}
+
+rectangle "Ordering Service" as ordering #LightGreen {
+    note right: Saga Orchestrator\nOwner: Order Aggregate
+}
+
+rectangle "Restaurant Service" as restaurant #LightYellow {
+    note right: Owner: Restaurant,\nMenu, Ticket Aggregates
+}
+
+rectangle "Payment Service" as payment #LightPink {
+    note right: Owner: Payment Aggregate\nIntegra com Payment Gateway
+}
+
+rectangle "Delivery Service" as delivery #LightCyan {
+    note right: Owner: Delivery Aggregate\nDesignação de entregadores
+}
+
+rectangle "Customer Service" as customer #Lavender {
+    note right: Owner: Customer Aggregate\nEndereços, Cartões
+}
+
+database "MySQL\nOrdering DB" as orderDB
+database "MySQL\nRestaurant DB" as restDB
+database "MySQL\nPayment DB" as payDB
+database "MySQL\nDelivery DB" as delDB
+database "MySQL\nCustomer DB" as custDB
+
+queue "RabbitMQ" as mq #Orange
+
+rectangle "Payment Gateway\n(Externo)" as pgw #LightCoral
+
+user --> gw : HTTP
+rest --> gw : HTTP
+courier --> gw : HTTP
+
+gw --> ordering : gRPC / HTTP
+gw --> restaurant : HTTP
+gw --> customer : HTTP
+
+ordering --> orderDB
+restaurant --> restDB
+payment --> payDB
+delivery --> delDB
+customer --> custDB
+
+ordering --> mq : Publish Commands
+mq --> restaurant : Consume Commands
+mq --> payment : Consume Commands
+mq --> delivery : Consume Commands
+
+restaurant --> mq : Publish Events
+payment --> mq : Publish Events
+delivery --> mq : Publish Events
+mq --> ordering : Consume Events
+
+payment --> pgw : HTTPS
+
+@enduml

@@ -1,0 +1,69 @@
+@startuml RabbitMQ_Topology
+!theme plain
+skinparam backgroundColor #FEFEFE
+
+title Topologia RabbitMQ — Exchanges e Filas
+
+rectangle "Ordering Service" as ordering #LightGreen
+rectangle "Payment Service" as payment #LightPink
+rectangle "Restaurant Service" as restaurant #LightYellow
+rectangle "Delivery Service" as delivery #LightCyan
+
+cloud "ordering.exchange\n(topic)" as orderExchange #Orange
+cloud "payment.exchange\n(topic)" as paymentExchange #Orange
+cloud "restaurant.exchange\n(topic)" as restaurantExchange #Orange
+cloud "delivery.exchange\n(topic)" as deliveryExchange #Orange
+
+queue "payment.authorize.queue" as authQ
+queue "payment.capture.queue" as captQ
+queue "payment.release.queue" as relQ
+queue "payment.refund.queue" as refQ
+queue "restaurant.ticket.create.queue" as ticketQ
+queue "restaurant.ticket.cancel.queue" as ticketCancelQ
+queue "delivery.schedule.queue" as delSchedQ
+queue "delivery.cancel.queue" as delCancelQ
+
+queue "ordering.payment.events.queue" as ordPayQ
+queue "ordering.restaurant.events.queue" as ordRestQ
+queue "ordering.delivery.events.queue" as ordDelQ
+
+queue "DLQ" as dlq #Red
+
+' Ordering publica comandos
+ordering --> orderExchange
+orderExchange --> authQ : "payment.authorize"
+orderExchange --> captQ : "payment.capture"
+orderExchange --> relQ : "payment.release"
+orderExchange --> refQ : "payment.refund"
+orderExchange --> ticketQ : "restaurant.ticket.create"
+orderExchange --> ticketCancelQ : "restaurant.ticket.cancel"
+orderExchange --> delSchedQ : "delivery.schedule"
+orderExchange --> delCancelQ : "delivery.cancel"
+
+authQ --> payment
+captQ --> payment
+relQ --> payment
+refQ --> payment
+ticketQ --> restaurant
+ticketCancelQ --> restaurant
+delSchedQ --> delivery
+delCancelQ --> delivery
+
+' Serviços publicam eventos
+payment --> paymentExchange
+restaurant --> restaurantExchange
+delivery --> deliveryExchange
+
+paymentExchange --> ordPayQ : "payment.*"
+restaurantExchange --> ordRestQ : "restaurant.ticket.*"
+deliveryExchange --> ordDelQ : "delivery.*"
+
+ordPayQ --> ordering
+ordRestQ --> ordering
+ordDelQ --> ordering
+
+' Dead Letter
+authQ .down.> dlq : "após N retries"
+ticketQ .down.> dlq : "após N retries"
+
+@enduml

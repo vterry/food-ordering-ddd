@@ -1,0 +1,24 @@
+@startuml Communication_Matrix
+!theme plain
+skinparam backgroundColor #FEFEFE
+
+title Matriz de Comunicação entre Serviços
+
+rectangle "Ordering Service" as OS #LightGreen
+rectangle "Payment Service" as PS #LightPink
+rectangle "Restaurant Service" as RS #LightYellow
+rectangle "Delivery Service" as DS #LightCyan
+rectangle "Customer Service" as CS #Lavender
+
+OS -right-> PS : <<async>>\nCommands:\nAuthorize, Capture,\nRelease, Refund
+PS -left-> OS : <<async>>\nEvents:\nAuthorized, Captured,\nRefunded, Released
+
+OS -down-> RS : <<async>>\nCommands:\nCreateTicket, CancelTicket
+RS -up-> OS : <<async>>\nEvents:\nTicketConfirmed, Rejected,\nReady, Cancelled
+
+OS -right-> DS : <<async>>\nCommands:\nScheduleDelivery,\nCancelDelivery
+DS -left-> OS : <<async>>\nEvents:\nScheduled, PickedUp,\nCompleted, Refused
+
+OS -down-> CS : <<sync / gRPC>>\nQuery: GetCustomer,\nGetDeliveryAddress
+
+@enduml

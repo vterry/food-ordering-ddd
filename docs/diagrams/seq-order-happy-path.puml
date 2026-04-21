@@ -1,0 +1,65 @@
+@startuml OrderCreation_HappyPath
+!theme plain
+skinparam backgroundColor #FEFEFE
+
+title Fluxo de Criação de Pedido — Happy Path
+
+actor Cliente as C
+participant "API Gateway" as GW
+participant "Ordering\nService" as OS
+participant "Payment\nService" as PS
+participant "Restaurant\nService" as RS
+participant "Delivery\nService" as DS
+queue "RabbitMQ" as MQ
+
+C -> GW : POST /orders (cart, paymentToken)
+GW -> OS : CreateOrder(cart, paymentToken)
+activate OS
+
+OS -> OS : Criar Order (status=CREATED)
+OS -> MQ : Publish: AuthorizePayment
+
+MQ -> PS : Consume: AuthorizePayment
+activate PS
+PS -> PS : Chamar Payment Gateway\n(autorizar valor)
+PS -> MQ : Publish: PaymentAuthorized
+deactivate PS
+
+MQ -> OS : Consume: PaymentAuthorized
+OS -> OS : Order.status = AWAITING_RESTAURANT
+OS -> MQ : Publish: CreateTicket
+
+MQ -> RS : Consume: CreateTicket
+activate RS
+RS -> RS : Criar Ticket\n(status=PENDING)
+note right: Restaurante visualiza\nno painel e confirma
+RS -> MQ : Publish: TicketConfirmed
+deactivate RS
+
+MQ -> OS : Consume: TicketConfirmed
+OS -> OS : Order.status = CONFIRMED
+OS -> MQ : Publish: CapturePayment
+
+MQ -> PS : Consume: CapturePayment
+activate PS
+PS -> PS : Capturar pagamento
+PS -> MQ : Publish: PaymentCaptured
+deactivate PS
+
+MQ -> OS : Consume: PaymentCaptured
+OS -> OS : Order.status = CONFIRMED
+OS -> MQ : Publish: ScheduleDelivery
+
+MQ -> DS : Consume: ScheduleDelivery
+activate DS
+DS -> DS : Designar entregador
+DS -> MQ : Publish: DeliveryScheduled
+deactivate DS
+
+MQ -> OS : Consume: DeliveryScheduled
+OS -> OS : Order.status = PREPARING
+deactivate OS
+
+note over OS : O fluxo continua com\nTicketReady → DeliveryPickedUp\n→ DeliveryCompleted
+
+@enduml

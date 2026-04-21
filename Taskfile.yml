@@ -1,0 +1,43 @@
+version: '3'
+
+tasks:
+  gen:
+    desc: Generate code using SQLC
+    cmds:
+      - cd customer && sqlc generate
+      - cd restaurant && sqlc generate || true
+      - cd ordering && sqlc generate || true
+      - cd payment && sqlc generate || true
+      - cd delivery && sqlc generate || true
+
+  migrate-new:
+    desc: "Create a new migration file (usage: task migrate-new name=create_users_table module=customer)"
+    cmds:
+      - mkdir -p {{.module}}/internal/adapters/db/migrations
+      - migrate create -ext sql -dir {{.module}}/internal/adapters/db/migrations -seq {{.name}}
+
+  migrate-up:
+    desc: Run migrations up
+    cmds:
+      - migrate -path customer/internal/adapters/db/migrations -database "mysql://root:root@tcp(localhost:3306)/food_project" up
+
+  setup:
+    desc: Setup development environment
+    cmds:
+      - go work sync
+      - task: docker-up
+
+  docker-up:
+    desc: Start infrastructure using Docker
+    cmds:
+      - docker compose up -d
+
+  docker-down:
+    desc: Stop infrastructure using Docker
+    cmds:
+      - docker compose down
+
+  test:
+    desc: Run all tests
+    cmds:
+      - go test -v -race ./...
