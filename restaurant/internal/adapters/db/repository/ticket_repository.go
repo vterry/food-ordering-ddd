@@ -110,9 +110,12 @@ func (r *SQLTicketRepository) FindByID(ctx context.Context, id vo.ID) (*ticket.T
 		})
 	}
 
-	t := ticket.NewTicket(vo.NewID(row.ID), vo.NewID(row.OrderID), vo.NewID(row.RestaurantID), items)
-	t.SetStatus(ticket.TicketStatus(row.Status))
-	t.ClearEvents()
-	
-	return t, nil
+	return ticket.MapFromPersistence(
+		vo.NewID(row.ID),
+		vo.NewID(row.OrderID),
+		vo.NewID(row.RestaurantID),
+		ticket.TicketStatus(row.Status),
+		row.RejectReason.String,
+		items,
+	), nil
 }

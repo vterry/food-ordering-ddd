@@ -2,7 +2,7 @@ package services
 
 import (
 	"context"
-	"fmt"
+	"github.com/google/uuid"
 	"github.com/vterry/food-project/common/pkg/domain/vo"
 	apperr "github.com/vterry/food-project/common/pkg/errors"
 	"github.com/vterry/food-project/restaurant/internal/core/domain/menu"
@@ -28,7 +28,7 @@ func NewRestaurantService(rr ports.RestaurantRepository, mr ports.MenuRepository
 }
 
 func (s *RestaurantService) CreateRestaurant(ctx context.Context, cmd ports.CreateRestaurantCommand) (vo.ID, error) {
-	id := vo.NewID(fmt.Sprintf("rest-%p", &cmd)) // Simple ID gen for now, usually UUID
+	id := vo.NewID(uuid.New().String())
 	r := restaurant.NewRestaurant(id, cmd.Name, cmd.Address, cmd.Hours)
 
 	if err := s.restaurantRepo.Save(ctx, r); err != nil {
@@ -50,7 +50,7 @@ func (s *RestaurantService) GetRestaurant(ctx context.Context, id vo.ID) (*resta
 }
 
 func (s *RestaurantService) CreateMenu(ctx context.Context, restaurantID vo.ID, name string) (vo.ID, error) {
-	id := vo.NewID(fmt.Sprintf("menu-%s", name))
+	id := vo.NewID(uuid.New().String())
 	m := menu.NewMenu(id, restaurantID, name)
 
 	if err := s.menuRepo.Save(ctx, m); err != nil {
@@ -97,7 +97,7 @@ func (s *RestaurantService) AddItemToMenu(ctx context.Context, cmd ports.AddMenu
 		return vo.ID{}, ErrMenuNotFound
 	}
 
-	itemID := vo.NewID(fmt.Sprintf("item-%s", cmd.Name))
+	itemID := vo.NewID(uuid.New().String())
 	item := menu.NewMenuItem(itemID, cmd.Name, cmd.Description, cmd.Price, cmd.Category)
 	
 	m.AddItem(item)

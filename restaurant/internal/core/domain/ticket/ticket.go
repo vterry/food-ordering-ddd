@@ -59,12 +59,21 @@ func (t *Ticket) Status() TicketStatus {
 	return t.status
 }
 
-func (t *Ticket) SetStatus(status TicketStatus) {
-	t.status = status
-}
-
 func (t *Ticket) Items() []TicketItem {
 	return t.items
+}
+
+// MapFromPersistence reconstructs a ticket from persistence data.
+func MapFromPersistence(id, orderID, restaurantID vo.ID, status TicketStatus, rejectReason string, items []TicketItem) *Ticket {
+	t := &Ticket{
+		orderID:      orderID,
+		restaurantID: restaurantID,
+		status:       status,
+		items:        items,
+		rejectReason: rejectReason,
+	}
+	t.SetID(id)
+	return t
 }
 
 func (t *Ticket) Confirm() error {
