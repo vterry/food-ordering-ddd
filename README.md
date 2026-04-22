@@ -12,6 +12,8 @@ O projeto foi construído sobre quatro pilares fundamentais:
 2.  **Event-Driven Architecture (EDA):** Comunicação assíncrona entre serviços utilizando **RabbitMQ**. O sistema reage a eventos de domínio para manter a consistência eventual.
 3.  **Arquitetura Hexagonal (Ports & Adapters):** Desacoplamento total da lógica de negócio de detalhes de infraestrutura (bancos de dados, APIs externas, mensageria).
 4.  **Saga Pattern (Orchestration):** Gerenciamento de transações distribuídas complexas (como a criação de um pedido) através de um orquestrador centralizado no `ordering-service`, garantindo fluxos de compensação em caso de falhas.
+5.  **Test-Driven Development (TDD):** Desenvolvimento guiado por testes como premissa obrigatória em todos os módulos. Todo novo comportamento deve ser precedido por um teste unitário ou de integração, garantindo que o código atenda aos requisitos desde a sua concepção.
+
 
 ---
 

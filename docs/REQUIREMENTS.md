@@ -204,6 +204,8 @@ O **Food Ordering Platform** é um sistema de backend para um aplicativo de deli
 | RNF-16 | O código deve seguir os princípios de **Clean Architecture** / **Hexagonal Architecture** |
 | RNF-17 | Contratos de API devem ser versionados |
 | RNF-18 | Migrações de banco de dados devem ser versionadas e reprodutíveis |
+| RNF-19 | O uso de **TDD (Test-Driven Development)** é obrigatório em todos os módulos, garantindo cobertura de testes desde o início do desenvolvimento |
+
 
 ---
 

@@ -1,0 +1,387 @@
+openapi: 3.0.3
+info:
+  title: Food Ordering Platform - Restaurant Service
+  version: 1.0.0
+  description: API for managing restaurants, menus, and ticket operations.
+servers:
+  - url: http://localhost:8081/api/v1
+
+paths:
+  /restaurants:
+    post:
+      summary: Create a new restaurant
+      operationId: CreateRestaurant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRestaurantRequest'
+      responses:
+        '201':
+          description: Restaurant created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IDResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /restaurants/{restaurant_id}/menu:
+    get:
+      summary: Get restaurant menu
+      operationId: GetMenu
+      parameters:
+        - name: restaurant_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Restaurant menu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestaurantMenu'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /restaurants/{restaurant_id}/menus:
+    post:
+      summary: Create a new menu for a restaurant
+      operationId: CreateMenu
+      parameters:
+        - name: restaurant_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMenuRequest'
+      responses:
+        '201':
+          description: Menu created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IDResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /restaurants/{restaurant_id}/menus/{menu_id}/activate:
+    put:
+      summary: Activate a specific menu
+      operationId: ActivateMenu
+      parameters:
+        - name: restaurant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: menu_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Menu activated
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /restaurants/{restaurant_id}/menus/{menu_id}/items:
+    post:
+      summary: Add an item to a menu
+      operationId: AddMenuItem
+      parameters:
+        - name: restaurant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: menu_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddMenuItemRequest'
+      responses:
+        '201':
+          description: Item added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IDResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /restaurants/{restaurant_id}/menus/{menu_id}/items/{item_id}/availability:
+    patch:
+      summary: Update item availability
+      operationId: UpdateItemAvailability
+      parameters:
+        - name: restaurant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: menu_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: item_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAvailabilityRequest'
+      responses:
+        '204':
+          description: Availability updated
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /tickets/{id}:
+    get:
+      summary: Get ticket status
+      operationId: GetTicket
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Ticket details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /tickets/{id}/confirm:
+    post:
+      summary: Confirm a ticket
+      operationId: ConfirmTicket
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Ticket confirmed
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /tickets/{id}/prepare:
+    post:
+      summary: Start preparing a ticket
+      operationId: StartPreparingTicket
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Preparation started
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /tickets/{id}/ready:
+    post:
+      summary: Mark ticket as ready
+      operationId: MarkTicketAsReady
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Ticket ready
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /tickets/{id}/reject:
+    post:
+      summary: Reject a ticket
+      operationId: RejectTicket
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RejectTicketRequest'
+      responses:
+        '204':
+          description: Ticket rejected
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  schemas:
+    IDResponse:
+      type: object
+      properties:
+        id: { type: string }
+
+    CreateRestaurantRequest:
+      type: object
+      required: [name, address]
+      properties:
+        name: { type: string }
+        address:
+          $ref: '#/components/schemas/Address'
+        operating_hours:
+          type: array
+          items:
+            $ref: '#/components/schemas/OperatingPeriod'
+
+    Address:
+      type: object
+      required: [street, city, zip_code]
+      properties:
+        street: { type: string }
+        city: { type: string }
+        zip_code: { type: string }
+
+    OperatingPeriod:
+      type: object
+      required: [day_of_week, open, close]
+      properties:
+        day_of_week: { type: integer, minimum: 0, maximum: 6 }
+        open: { type: string, pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$', example: "08:00" }
+        close: { type: string, pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$', example: "22:00" }
+
+    CreateMenuRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+
+    AddMenuItemRequest:
+      type: object
+      required: [name, price, category]
+      properties:
+        name: { type: string }
+        description: { type: string }
+        price: { type: number }
+        currency: { type: string, default: BRL }
+        category: { type: string }
+
+    UpdateAvailabilityRequest:
+      type: object
+      required: [available]
+      properties:
+        available: { type: boolean }
+
+    RejectTicketRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string }
+
+    RestaurantMenu:
+      type: object
+      properties:
+        restaurant_id: { type: string }
+        restaurant_name: { type: string }
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MenuItem'
+
+    MenuItem:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        price: { type: number }
+        category: { type: string }
+        available: { type: boolean }
+
+    Ticket:
+      type: object
+      properties:
+        id: { type: string }
+        order_id: { type: string }
+        restaurant_id: { type: string }
+        status: { type: string }
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TicketItem'
+
+    TicketItem:
+      type: object
+      properties:
+        product_id: { type: string }
+        name: { type: string }
+        quantity: { type: integer }
+
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string }
+        message: { type: string }
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'

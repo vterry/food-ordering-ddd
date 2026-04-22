@@ -10,6 +10,18 @@ tasks:
       - cd payment && sqlc generate || true
       - cd delivery && sqlc generate || true
 
+  gen-customer-api:
+    desc: Generate Customer API from OpenAPI spec
+    cmds:
+      - mkdir -p customer/internal/adapters/api/generated
+      - oapi-codegen -package generated -generate types,server,spec,strict-server customer/api/openapi.yaml > customer/internal/adapters/api/generated/api.gen.go
+
+  gen-restaurant-api:
+    desc: Generate Restaurant API from OpenAPI spec
+    cmds:
+      - mkdir -p restaurant/internal/adapters/api/generated
+      - oapi-codegen -package generated -generate types,server,spec,strict-server restaurant/api/openapi.yaml > restaurant/internal/adapters/api/generated/api.gen.go
+
   migrate-new:
     desc: "Create a new migration file (usage: task migrate-new name=create_users_table module=customer)"
     cmds:

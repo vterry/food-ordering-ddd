@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package restaurant;
+
+option go_package = "github.com/vterry/food-project/restaurant/api/proto";
+
+service CatalogService {
+  rpc GetMenuItem (GetMenuItemRequest) returns (MenuItemResponse) {}
+  rpc ListMenuItems (ListMenuItemsRequest) returns (ListMenuItemsResponse) {}
+}
+
+message GetMenuItemRequest {
+  string restaurant_id = 1;
+  string item_id = 2;
+}
+
+message MenuItemResponse {
+  string id = 1;
+  string restaurant_id = 2;
+  string restaurant_name = 3;
+  string name = 4;
+  string description = 5;
+  double price = 6;
+  string currency = 7;
+  bool available = 8;
+}
+
+message ListMenuItemsRequest {
+  string restaurant_id = 1;
+}
+
+message ListMenuItemsResponse {
+  repeated MenuItemResponse items = 1;
+}

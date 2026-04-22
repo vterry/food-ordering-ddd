@@ -16,6 +16,8 @@ Este plano segue o **Roadmap de Implementação** definido na Seção 13 do [ARC
 - **Referências** específicas de cada skill a serem consultadas
 - **Critérios de Aceite** para validação pelo P.O.
 - **Dependências** entre sprints
+- **Premissa Técnica:** Uso obrigatório de **TDD (Test-Driven Development)** em todos os entregáveis de código.
+
 
 ### Mapa de Skills Disponíveis
 

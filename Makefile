@@ -20,3 +20,7 @@ docker-up:
 
 docker-down:
 	docker compose down
+
+test-cover:
+	$(GO) test -v -race -coverprofile=coverage.out ./...
+	$(GO) tool cover -func=coverage.out

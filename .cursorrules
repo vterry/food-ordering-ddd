@@ -11,3 +11,11 @@
 
 ## Skills e Contexto
 - A pasta `.skills` contém expertise sobre Golang, Microserviços e Arquitetura. Invoque e leia esses arquivos (ex: `@[.skills/.agents/skills/golang-pro/SKILL.md]`) sempre que tiver dúvidas sobre decisões de implementação, linting ou padrões de concorrência.
++
++## Práticas de Desenvolvimento
++1. **TDD Obrigatório:** Todo desenvolvimento de novas funcionalidades ou correção de bugs deve obrigatoriamente seguir o fluxo de TDD:
++   - **Red:** Escreva um teste que falha para o novo comportamento.
++   - **Green:** Escreva o código mínimo necessário para fazer o teste passar.
++   - **Refactor:** Melhore o código mantendo os testes passando.
++   - Não prossiga para a implementação do core sem ter os testes definidos e falhando inicialmente.
++

@@ -2,7 +2,7 @@ package services
 
 import (
 	"context"
-	"github.com/vterry/food-project/common/pkg/domain/base"
+	"errors"
 	"github.com/vterry/food-project/common/pkg/domain/vo"
 	apperr "github.com/vterry/food-project/common/pkg/errors"
 	"github.com/vterry/food-project/customer/internal/core/domain/customer"
@@ -10,40 +10,8 @@ import (
 	"testing"
 )
 
-// Mocks manuais para não depender de ferramentas de geração de mock agora
-type MockCustomerRepo struct {
-	customers map[string]*customer.Customer
-}
-
-func (m *MockCustomerRepo) Save(ctx context.Context, c *customer.Customer) error {
-	m.customers[c.ID().String()] = c
-	return nil
-}
-
-func (m *MockCustomerRepo) FindByID(ctx context.Context, id vo.ID) (*customer.Customer, error) {
-	return m.customers[id.String()], nil
-}
-
-func (m *MockCustomerRepo) FindByEmail(ctx context.Context, email string) (*customer.Customer, error) {
-	for _, c := range m.customers {
-		if c.Email().String() == string(email) {
-			return c, nil
-		}
-	}
-	return nil, nil
-}
-
-type MockPublisher struct {
-	Events []base.DomainEvent
-}
-
-func (m *MockPublisher) Publish(ctx context.Context, events ...base.DomainEvent) error {
-	m.Events = append(m.Events, events...)
-	return nil
-}
-
 func TestRegisterCustomer(t *testing.T) {
-	repo := &MockCustomerRepo{customers: make(map[string]*customer.Customer)}
+	repo := NewMockCustomerRepo()
 	pub := &MockPublisher{}
 	svc := NewCustomerService(repo, pub)
 
@@ -74,34 +42,144 @@ func TestRegisterCustomer(t *testing.T) {
 	}
 }
 
-func TestRegisterCustomer_DuplicateEmail(t *testing.T) {
-	repo := &MockCustomerRepo{customers: make(map[string]*customer.Customer)}
-	pub := &MockPublisher{}
-	svc := NewCustomerService(repo, pub)
+func TestRegisterCustomer_Errors(t *testing.T) {
+	t.Run("duplicate email returns conflict", func(t *testing.T) {
+		repo := NewMockCustomerRepo()
+		pub := &MockPublisher{}
+		svc := NewCustomerService(repo, pub)
 
-	cmd := ports.RegisterCustomerCommand{
-		Name:  "John Doe",
-		Email: "john@example.com",
-		Phone: "5511999999999",
-	}
+		cmd := ports.RegisterCustomerCommand{
+			Name:  "John Doe",
+			Email: "john@example.com",
+			Phone: "5511999999999",
+		}
 
-	_, _ = svc.RegisterCustomer(context.Background(), cmd)
-	_, err := svc.RegisterCustomer(context.Background(), cmd)
+		_, _ = svc.RegisterCustomer(context.Background(), cmd)
+		_, err := svc.RegisterCustomer(context.Background(), cmd)
 
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
 
-	aerr, ok := err.(*apperr.AppError)
-	if !ok {
-		t.Fatalf("expected *apperr.AppError, got %T", err)
-	}
+		aerr, ok := err.(*apperr.AppError)
+		if !ok {
+			t.Fatalf("expected *apperr.AppError, got %T", err)
+		}
 
-	if aerr.Code != "CUSTOMER_ALREADY_EXISTS" {
-		t.Errorf("expected code CUSTOMER_ALREADY_EXISTS, got %s", aerr.Code)
-	}
+		if aerr.Slug != "CUSTOMER_ALREADY_EXISTS" {
+			t.Errorf("expected slug CUSTOMER_ALREADY_EXISTS, got %s", aerr.Slug)
+		}
+	})
 
-	if aerr.Type != apperr.ErrorTypeConflict {
-		t.Errorf("expected type CONFLICT, got %s", aerr.Type)
-	}
+	t.Run("invalid email format returns error", func(t *testing.T) {
+		repo := NewMockCustomerRepo()
+		pub := &MockPublisher{}
+		svc := NewCustomerService(repo, pub)
+
+		cmd := ports.RegisterCustomerCommand{
+			Name:  "John",
+			Email: "invalid-email",
+			Phone: "5511999999999",
+		}
+
+		_, err := svc.RegisterCustomer(context.Background(), cmd)
+		if err != customer.ErrInvalidEmail {
+			t.Errorf("expected ErrInvalidEmail, got %v", err)
+		}
+	})
+
+	t.Run("repository save error", func(t *testing.T) {
+		repo := NewMockCustomerRepo()
+		repo.SaveErr = errors.New("db down")
+		pub := &MockPublisher{}
+		svc := NewCustomerService(repo, pub)
+
+		cmd := ports.RegisterCustomerCommand{
+			Name:  "John",
+			Email: "john@ex.com",
+			Phone: "5511999999999",
+		}
+
+		_, err := svc.RegisterCustomer(context.Background(), cmd)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		aerr, ok := err.(*apperr.AppError)
+		if !ok || aerr.Slug != "DATABASE_ERROR" {
+			t.Errorf("expected DATABASE_ERROR, got %v", err)
+		}
+	})
 }
+
+func TestAddAddress(t *testing.T) {
+	t.Run("happy path", func(t *testing.T) {
+		repo := NewMockCustomerRepo()
+		pub := &MockPublisher{}
+		svc := NewCustomerService(repo, pub)
+
+		custID := vo.NewID("123")
+		name, _ := customer.NewName("John")
+		email, _ := customer.NewEmail("j@j.com")
+		phone, _ := customer.NewPhone("123456789")
+		_ = repo.Save(context.Background(), customer.NewCustomer(custID, name, email, phone))
+
+		cmd := ports.AddAddressCommand{
+			Street:  "Main St",
+			City:    "NY",
+			ZipCode: "10001",
+		}
+
+		err := svc.AddAddress(context.Background(), custID, cmd)
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+
+		c, _ := repo.FindByID(context.Background(), custID)
+		if len(c.Addresses()) != 1 {
+			t.Errorf("expected 1 address, got %d", len(c.Addresses()))
+		}
+	})
+
+	t.Run("customer not found", func(t *testing.T) {
+		repo := NewMockCustomerRepo()
+		pub := &MockPublisher{}
+		svc := NewCustomerService(repo, pub)
+
+		err := svc.AddAddress(context.Background(), vo.NewID("none"), ports.AddAddressCommand{})
+		if err != ErrCustomerNotFound {
+			t.Errorf("expected ErrCustomerNotFound, got %v", err)
+		}
+	})
+}
+
+func TestGetCustomer(t *testing.T) {
+	t.Run("happy path", func(t *testing.T) {
+		repo := NewMockCustomerRepo()
+		svc := NewCustomerService(repo, &MockPublisher{})
+
+		custID := vo.NewID("123")
+		name, _ := customer.NewName("John")
+		email, _ := customer.NewEmail("j@j.com")
+		phone, _ := customer.NewPhone("123456789")
+		_ = repo.Save(context.Background(), customer.NewCustomer(custID, name, email, phone))
+
+		got, err := svc.GetCustomer(context.Background(), custID)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got.ID().String() != custID.String() {
+			t.Errorf("expected id %v, got %v", custID, got.ID())
+		}
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		repo := NewMockCustomerRepo()
+		svc := NewCustomerService(repo, &MockPublisher{})
+
+		_, err := svc.GetCustomer(context.Background(), vo.NewID("none"))
+		if err != ErrCustomerNotFound {
+			t.Errorf("expected ErrCustomerNotFound, got %v", err)
+		}
+	})
+}
+

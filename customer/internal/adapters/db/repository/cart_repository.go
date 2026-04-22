@@ -3,10 +3,13 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	ctxutil "github.com/vterry/food-project/common/pkg/context"
 	"github.com/vterry/food-project/common/pkg/domain/vo"
 	"github.com/vterry/food-project/customer/internal/adapters/db/sqlc"
 	"github.com/vterry/food-project/customer/internal/core/domain/cart"
+	"github.com/google/uuid"
 )
 
 type SQLCartRepository struct {
@@ -58,6 +61,29 @@ func (r *SQLCartRepository) Save(ctx context.Context, c *cart.Cart) error {
 			return fmt.Errorf("failed to save cart item: %w", err)
 		}
 	}
+
+	// 3. Persist Events to Outbox
+	correlationID := ctxutil.GetCorrelationID(ctx)
+	for _, event := range c.Events() {
+		payload, err := json.Marshal(event)
+		if err != nil {
+			return fmt.Errorf("failed to marshal event %s: %w", event.EventType(), err)
+		}
+
+		err = qtx.InsertOutboxMessage(ctx, sqlc.InsertOutboxMessageParams{
+			ID:            uuid.New().String(),
+			AggregateType: "Cart",
+			AggregateID:   c.CustomerID().String(),
+			EventType:     event.EventType(),
+			Payload:       payload,
+			CorrelationID: correlationID,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to insert outbox message: %w", err)
+		}
+	}
+
+	c.ClearEvents()
 
 	return tx.Commit()
 }

@@ -6,6 +6,8 @@ package sqlc
 
 import (
 	"database/sql"
+	"encoding/json"
+	"time"
 )
 
 type Address struct {
@@ -43,4 +45,15 @@ type Customer struct {
 	Phone     string       `db:"phone" json:"phone"`
 	CreatedAt sql.NullTime `db:"created_at" json:"created_at"`
 	UpdatedAt sql.NullTime `db:"updated_at" json:"updated_at"`
+}
+
+type OutboxMessage struct {
+	ID            string          `db:"id" json:"id"`
+	AggregateType string          `db:"aggregate_type" json:"aggregate_type"`
+	AggregateID   string          `db:"aggregate_id" json:"aggregate_id"`
+	EventType     string          `db:"event_type" json:"event_type"`
+	Payload       json.RawMessage `db:"payload" json:"payload"`
+	CorrelationID string          `db:"correlation_id" json:"correlation_id"`
+	CreatedAt     time.Time       `db:"created_at" json:"created_at"`
+	PublishedAt   sql.NullTime    `db:"published_at" json:"published_at"`
 }

@@ -10,14 +10,16 @@ import (
 )
 
 type CartService struct {
-	repo      ports.CartRepository
-	publisher ports.EventPublisher
+	repo          ports.CartRepository
+	publisher     ports.EventPublisher
+	catalogClient ports.RestaurantCatalogPort
 }
 
-func NewCartService(repo ports.CartRepository, publisher ports.EventPublisher) *CartService {
+func NewCartService(repo ports.CartRepository, publisher ports.EventPublisher, catalogClient ports.RestaurantCatalogPort) *CartService {
 	return &CartService{
-		repo:      repo,
-		publisher: publisher,
+		repo:          repo,
+		publisher:     publisher,
+		catalogClient: catalogClient,
 	}
 }
 
@@ -34,9 +36,17 @@ func (s *CartService) GetCart(ctx context.Context, customerID vo.ID) (*cart.Cart
 
 	return c, nil
 }
-
 func (s *CartService) AddItemToCart(ctx context.Context, customerID vo.ID, cmd ports.AddItemToCartCommand) error {
-	// 1. Buscar carrinho
+	// 1. Validar item no catálogo externo (Restaurant Service)
+	menuItem, err := s.catalogClient.GetMenuItem(ctx, cmd.RestaurantID, cmd.ProductID)
+	if err != nil {
+		return fmt.Errorf("failed to validate menu item: %w", err)
+	}
+	if menuItem == nil || !menuItem.Available {
+		return apperr.NewDomainError("ITEM_UNAVAILABLE", "item is not available in restaurant catalog", nil)
+	}
+
+	// 2. Buscar carrinho
 	c, err := s.GetCart(ctx, customerID)
 	if err != nil {
 		return err

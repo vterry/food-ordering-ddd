@@ -19,8 +19,11 @@ type Querier interface {
 	InsertCart(ctx context.Context, arg InsertCartParams) error
 	InsertCartItem(ctx context.Context, arg InsertCartItemParams) error
 	InsertCustomer(ctx context.Context, arg InsertCustomerParams) error
+	InsertOutboxMessage(ctx context.Context, arg InsertOutboxMessageParams) error
 	ListAddressesByCustomerID(ctx context.Context, customerID string) ([]ListAddressesByCustomerIDRow, error)
 	ListCartItemsByCustomerID(ctx context.Context, customerID string) ([]CartItem, error)
+	ListUnpublishedMessages(ctx context.Context, limit int32) ([]OutboxMessage, error)
+	MarkMessageAsPublished(ctx context.Context, id string) error
 	UpdateCustomer(ctx context.Context, arg UpdateCustomerParams) error
 	UpdateDefaultAddress(ctx context.Context, arg UpdateDefaultAddressParams) error
 }

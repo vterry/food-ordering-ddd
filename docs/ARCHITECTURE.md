@@ -17,6 +17,8 @@ O sistema adota uma arquitetura de **microserviços orientada a eventos** (EDA �
 3. **Comunicação Assíncrona por Padrão** — Eventos são a forma primária de comunicação; gRPC é usado apenas quando latência sub-100ms é requisito.
 4. **Resiliência por Design** — Circuit breakers, retries, dead-letter queues e idempotência em todos os pontos de integração.
 5. **Observabilidade End-to-End** — Correlation IDs propagados em toda a cadeia de chamadas.
+6. **Desenvolvimento Guiado por Testes (TDD)** — Premissa obrigatória para todos os módulos: o desenvolvimento deve sempre começar pela definição dos testes de comportamento.
+
 
 ---
 

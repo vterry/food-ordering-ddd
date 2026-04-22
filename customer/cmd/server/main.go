@@ -2,73 +2,105 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"log"
+	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/labstack/echo/v4"
-	echoMiddleware "github.com/labstack/echo/v4/middleware"
+	pb "github.com/vterry/food-project/customer/api/proto"
 	"github.com/vterry/food-project/customer/internal/adapters/api"
 	apigen "github.com/vterry/food-project/customer/internal/adapters/api/generated"
-	"github.com/vterry/food-project/customer/internal/adapters/api/middleware"
+	custgrpc "github.com/vterry/food-project/customer/internal/adapters/api/grpc"
 	customerDB "github.com/vterry/food-project/customer/internal/adapters/db"
 	"github.com/vterry/food-project/customer/internal/adapters/db/repository"
+	"github.com/vterry/food-project/customer/internal/adapters/external"
 	"github.com/vterry/food-project/customer/internal/adapters/messaging"
 	"github.com/vterry/food-project/customer/internal/core/services"
+	"google.golang.org/grpc"
 )
 
 const (
-	defaultPort = "8080"
-	defaultDSN  = "root:root@tcp(localhost:3306)/food_project?parseTime=true"
-	defaultMQ   = "amqp://guest:guest@localhost:5672/"
+	defaultPort         = "8080"
+	defaultGRPCPort     = "50051"
+	defaultRestGRPCPort = "50052"
+	defaultDSN          = "root:root@tcp(localhost:3306)/food_project?parseTime=true"
+	defaultMQ           = "amqp://guest:guest@localhost:5672/"
 )
 
 func main() {
 	// 1. Config (Basic env load)
 	port := getEnv("PORT", defaultPort)
+	grpcPort := getEnv("GRPC_PORT", defaultGRPCPort)
+	restGRPCPort := getEnv("RESTAURANT_GRPC_PORT", defaultRestGRPCPort)
 	dsn := getEnv("MYSQL_DSN", defaultDSN)
 	mqURL := getEnv("RABBITMQ_URL", defaultMQ)
 
 	// 2. Infra Initialization
 	mysqlDB, err := customerDB.NewMySQLConnection(dsn)
 	if err != nil {
-		log.Fatalf("failed to connect to mysql: %v", err)
+		slog.Error("failed to connect to mysql", "error", err)
+		os.Exit(1)
 	}
 	defer mysqlDB.Close()
 
 	publisher, err := messaging.NewRabbitMQPublisher(mqURL, "customer-service")
 	if err != nil {
-		log.Fatalf("failed to connect to rabbitmq: %v", err)
+		slog.Error("failed to connect to rabbitmq", "error", err)
+		os.Exit(1)
 	}
 	defer publisher.Close()
 
 	// 3. Dependency Injection
 	custRepo := repository.NewSQLCustomerRepository(mysqlDB)
 	cartRepo := repository.NewSQLCartRepository(mysqlDB)
+	catalogClient, err := external.NewRestaurantCatalogClient("localhost:" + restGRPCPort)
+	if err != nil {
+		slog.Error("failed to initialize restaurant catalog client", "error", err)
+		os.Exit(1)
+	}
 
 	custSvc := services.NewCustomerService(custRepo, publisher)
-	cartSvc := services.NewCartService(cartRepo, publisher)
+	cartSvc := services.NewCartService(cartRepo, publisher, catalogClient)
 
 	handler := api.NewCustomerHandler(custSvc, cartSvc)
 
 	// 4. Server Setup
-	e := echo.New()
-	e.Use(echoMiddleware.Logger())
-	e.Use(echoMiddleware.Recover())
-	e.Use(middleware.CorrelationIDMiddleware)
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
+
+	e := api.NewEcho()
 
 	// Register Handlers
 	strictHandler := apigen.NewStrictHandler(handler, nil)
 	apigen.RegisterHandlersWithBaseURL(e, strictHandler, "/api/v1")
 
-	// 5. Start Server with Graceful Shutdown
+	// 5. Start Servers with Graceful Shutdown
+	// HTTP Server
 	go func() {
+		slog.Info("Starting HTTP server", "port", port)
 		if err := e.Start(":" + port); err != nil && err != http.ErrServerClosed {
-			e.Logger.Fatal("shutting down the server")
+			slog.Error("shutting down the server", "error", err)
+		}
+	}()
+
+	// gRPC Server
+	grpcServer := grpc.NewServer()
+	custGRPC := custgrpc.NewCustomerGRPCServer(custSvc)
+	pb.RegisterCustomerServiceServer(grpcServer, custGRPC)
+
+	lis, err := net.Listen("tcp", ":"+grpcPort)
+	if err != nil {
+		slog.Error("failed to listen for grpc", "error", err)
+		os.Exit(1)
+	}
+
+	go func() {
+		slog.Info("Starting gRPC server", "port", grpcPort)
+		if err := grpcServer.Serve(lis); err != nil {
+			slog.Error("failed to serve grpc", "error", err)
 		}
 	}()
 
@@ -81,10 +113,12 @@ func main() {
 	defer cancel()
 
 	if err := e.Shutdown(ctx); err != nil {
-		e.Logger.Fatal(err)
+		slog.Error("error shutting down http", "error", err)
 	}
-	
-	fmt.Println("Server gracefully stopped")
+
+	grpcServer.GracefulStop()
+
+	slog.Info("Server gracefully stopped")
 }
 
 func getEnv(key, fallback string) string {

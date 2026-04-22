@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package customer;
+
+option go_package = "github.com/vterry/food-project/customer/api/proto";
+
+service CustomerService {
+  rpc GetCustomerByID(GetCustomerRequest) returns (CustomerResponse);
+}
+
+message GetCustomerRequest {
+  string id = 1;
+}
+
+message Address {
+  string id = 1;
+  string street = 2;
+  string city = 3;
+  string zip_code = 4;
+  bool is_default = 5;
+}
+
+message CustomerResponse {
+  string id = 1;
+  string name = 2;
+  string email = 3;
+  string phone = 4;
+  repeated Address addresses = 5;
+}

@@ -22,6 +22,11 @@ func NewMoney(amount float64, currency string) (Money, error) {
 	}, nil
 }
 
+func NewMoneyFromFloat(amount float64, currency string) Money {
+	m, _ := NewMoney(amount, currency)
+	return m
+}
+
 func (m Money) Amount() float64 {
 	return m.amount
 }

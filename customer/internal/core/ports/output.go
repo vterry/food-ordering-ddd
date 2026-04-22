@@ -24,3 +24,15 @@ type CartRepository interface {
 type EventPublisher interface {
 	Publish(ctx context.Context, events ...base.DomainEvent) error
 }
+
+type RestaurantMenuItem struct {
+	ID           vo.ID
+	RestaurantID vo.ID
+	Name         string
+	Price        vo.Money
+	Available    bool
+}
+
+type RestaurantCatalogPort interface {
+	GetMenuItem(ctx context.Context, restaurantID, itemID vo.ID) (*RestaurantMenuItem, error)
+}
