@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/rand"
 	"time"
 
 	"github.com/sony/gobreaker"
@@ -40,16 +39,9 @@ func NewMockGateway() *MockGateway {
 // Authorize simulates a card authorization.
 func (g *MockGateway) Authorize(ctx context.Context, p *payment.Payment, token payment.CardToken) error {
 	_, err := g.cb.Execute(func() (interface{}, error) {
-		// Simulate network latency
-		select {
-		case <-time.After(50 * time.Millisecond):
-		case <-ctx.Done():
-			return nil, fmt.Errorf("gateway timeout: %w", ctx.Err())
-		}
-
-		// Simulate random failures (10% chance)
-		if rand.Float32() < 0.1 {
-			return nil, errors.New("simulated gateway failure")
+		// Specific failure trigger for E2E tests
+		if token.String() == "tok_failure" {
+			return nil, errors.New("insufficient funds")
 		}
 
 		return nil, nil

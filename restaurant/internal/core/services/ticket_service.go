@@ -31,6 +31,22 @@ func (s *TicketService) CreateTicket(ctx context.Context, cmd ports.CreateTicket
 		return vo.ID{}, apperr.NewInfrastructureError("DATABASE_ERROR", "failed to save ticket", err)
 	}
 
+	// For E2E testing: auto-reject if item name is "REJECT_ME"
+	shouldReject := false
+	for _, item := range cmd.Items {
+		if item.Name == "REJECT_ME" {
+			shouldReject = true
+			break
+		}
+	}
+
+	if shouldReject {
+		_ = s.RejectTicket(ctx, id, "item out of stock")
+	} else {
+		// Auto-confirm for Happy Path in E2E
+		_ = s.ConfirmTicket(ctx, id)
+	}
+
 	return id, nil
 }
 

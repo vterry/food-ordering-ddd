@@ -1,0 +1,131 @@
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: food_project
+    ports:
+      - "3307:3306" # Use 3307 to avoid conflict with dev mysql
+    volumes:
+      - ./tests/e2e/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5673:5672" # Use 5673 to avoid conflict with dev rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      timeout: 5s
+      retries: 10
+
+  customer-service:
+    build:
+      context: .
+      args:
+        SERVICE_PATH: ./customer
+    restart: on-failure
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      PORT: 8080
+      MYSQL_DSN: "root:root@tcp(mysql:3306)/food_project?parseTime=true"
+      RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672/"
+      RESTAURANT_GRPC_ADDR: "restaurant-service:50052"
+
+  restaurant-service:
+    build:
+      context: .
+      args:
+        SERVICE_PATH: ./restaurant
+    restart: on-failure
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      PORT: 8081
+      MYSQL_DSN: "root:root@tcp(mysql:3306)/food_project?parseTime=true"
+      RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672/"
+
+  payment-service:
+    build:
+      context: .
+      args:
+        SERVICE_PATH: ./payment
+    restart: on-failure
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      PORT: 8082
+      MYSQL_DSN: "root:root@tcp(mysql:3306)/food_project?parseTime=true"
+      RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672/"
+
+  ordering-service:
+    build:
+      context: .
+      args:
+        SERVICE_PATH: ./ordering
+    restart: on-failure
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      PORT: 8083
+      MYSQL_DSN: "root:root@tcp(mysql:3306)/food_project?parseTime=true"
+      RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672/"
+      CUSTOMER_GRPC_ADDR: "customer-service:50051"
+
+  delivery-service:
+    build:
+      context: .
+      args:
+        SERVICE_PATH: ./delivery
+    restart: on-failure
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      PORT: 8084
+      MYSQL_DSN: "root:root@tcp(mysql:3306)/food_project?parseTime=true"
+      RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672/"
+
+  test-runner:
+    image: golang:alpine
+    working_dir: /app
+    volumes:
+      - .:/app
+    depends_on:
+      customer-service:
+        condition: service_started
+      restaurant-service:
+        condition: service_started
+      payment-service:
+        condition: service_started
+      ordering-service:
+        condition: service_started
+      delivery-service:
+        condition: service_started
+    command: ["go", "test", "-v", "./tests/e2e/..."]
+    environment:
+      CUSTOMER_API: "http://customer-service:8080"
+      RESTAURANT_API: "http://restaurant-service:8081"
+      ORDERING_API: "http://ordering-service:8083"
+      DELIVERY_API: "http://delivery-service:8084"

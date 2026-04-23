@@ -10,6 +10,7 @@ import (
 	ctxutil "github.com/vterry/food-project/common/pkg/context"
 	"github.com/vterry/food-project/common/pkg/domain/base"
 	"github.com/vterry/food-project/common/pkg/domain/vo"
+	"github.com/vterry/food-project/common/pkg/outbox"
 	"github.com/vterry/food-project/restaurant/internal/adapters/db/sqlc"
 	"github.com/vterry/food-project/restaurant/internal/core/domain/restaurant"
 )
@@ -99,6 +100,38 @@ func (r *SQLRestaurantRepository) FindByID(ctx context.Context, id vo.ID) (*rest
 	return rest, nil
 }
 
+func (r *SQLRestaurantRepository) FetchUnpublished(ctx context.Context, limit int) ([]outbox.OutboxMessage, error) {
+	query := `
+		SELECT id, aggregate_type, aggregate_id, event_type, payload, correlation_id
+		FROM outbox_messages
+		WHERE published_at IS NULL
+		ORDER BY created_at ASC
+		LIMIT ?
+	`
+	rows, err := r.db.QueryContext(ctx, query, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var messages []outbox.OutboxMessage
+	for rows.Next() {
+		var m outbox.OutboxMessage
+		err := rows.Scan(&m.ID, &m.AggregateType, &m.AggregateID, &m.EventType, &m.Payload, &m.CorrelationID)
+		if err != nil {
+			return nil, err
+		}
+		messages = append(messages, m)
+	}
+	return messages, nil
+}
+
+func (r *SQLRestaurantRepository) MarkAsPublished(ctx context.Context, id string) error {
+	query := `UPDATE outbox_messages SET published_at = NOW() WHERE id = ?`
+	_, err := r.db.ExecContext(ctx, query, id)
+	return err
+}
+
 // Helper to avoid duplication
 func (r *SQLRestaurantRepository) persistEvents(ctx context.Context, qtx *sqlc.Queries, aggregateID, aggregateType string, events []base.DomainEvent) error {
 	correlationID := ctxutil.GetCorrelationID(ctx)
@@ -122,6 +155,3 @@ func (r *SQLRestaurantRepository) persistEvents(ctx context.Context, qtx *sqlc.Q
 	}
 	return nil
 }
-
-// Note: persistEvents uses interface{} because we have different event types. 
-// However, base.DomainEvent is preferred.

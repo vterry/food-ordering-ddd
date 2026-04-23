@@ -3,6 +3,7 @@ package ports
 import (
 	"context"
 
+	"github.com/vterry/food-project/common/pkg/domain/base"
 	"github.com/vterry/food-project/payment/internal/core/domain/payment"
 )
 
@@ -20,3 +21,8 @@ type PaymentRepository interface {
 	FindByID(ctx context.Context, id string) (*payment.Payment, error)
 	FindByOrderID(ctx context.Context, orderID string) (*payment.Payment, error)
 }
+
+type DomainEventPublisher interface {
+	Publish(ctx context.Context, events ...base.DomainEvent) error
+}
+

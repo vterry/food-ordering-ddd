@@ -35,6 +35,7 @@ func main() {
 	port := getEnv("PORT", defaultPort)
 	grpcPort := getEnv("GRPC_PORT", defaultGRPCPort)
 	restGRPCPort := getEnv("RESTAURANT_GRPC_PORT", defaultRestGRPCPort)
+	restGRPCAddr := getEnv("RESTAURANT_GRPC_ADDR", "localhost:"+restGRPCPort)
 	dsn := getEnv("MYSQL_DSN", defaultDSN)
 	mqURL := getEnv("RABBITMQ_URL", defaultMQ)
 
@@ -56,7 +57,7 @@ func main() {
 	// 3. Dependency Injection
 	custRepo := repository.NewSQLCustomerRepository(mysqlDB)
 	cartRepo := repository.NewSQLCartRepository(mysqlDB)
-	catalogClient, err := external.NewRestaurantCatalogClient("localhost:" + restGRPCPort)
+	catalogClient, err := external.NewRestaurantCatalogClient(restGRPCAddr)
 	if err != nil {
 		slog.Error("failed to initialize restaurant catalog client", "error", err)
 		os.Exit(1)

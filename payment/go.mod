@@ -1,6 +1,6 @@
 module github.com/vterry/food-project/payment
 
-go 1.25.5
+go 1.24.0
 
 require (
 	dario.cat/mergo v1.0.2 // indirect
@@ -66,3 +66,5 @@ require (
 	golang.org/x/time v0.14.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/vterry/food-project/common => ../common

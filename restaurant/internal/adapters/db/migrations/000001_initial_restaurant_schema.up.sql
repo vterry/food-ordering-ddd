@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS restaurants (
-    id VARCHAR(36) PRIMARY KEY,
+    id VARCHAR(255) PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     street VARCHAR(255) NOT NULL,
     city VARCHAR(100) NOT NULL,
@@ -10,8 +10,8 @@ CREATE TABLE IF NOT EXISTS restaurants (
 );
 
 CREATE TABLE IF NOT EXISTS menus (
-    id VARCHAR(36) PRIMARY KEY,
-    restaurant_id VARCHAR(36) NOT NULL,
+    id VARCHAR(255) PRIMARY KEY,
+    restaurant_id VARCHAR(255) NOT NULL,
     name VARCHAR(255) NOT NULL,
     is_active BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -20,8 +20,8 @@ CREATE TABLE IF NOT EXISTS menus (
 );
 
 CREATE TABLE IF NOT EXISTS menu_items (
-    id VARCHAR(36) PRIMARY KEY,
-    menu_id VARCHAR(36) NOT NULL,
+    id VARCHAR(255) PRIMARY KEY,
+    menu_id VARCHAR(255) NOT NULL,
     name VARCHAR(255) NOT NULL,
     description TEXT,
     price_amount DECIMAL(10,2) NOT NULL,
@@ -34,9 +34,9 @@ CREATE TABLE IF NOT EXISTS menu_items (
 );
 
 CREATE TABLE IF NOT EXISTS tickets (
-    id VARCHAR(36) PRIMARY KEY,
-    order_id VARCHAR(36) NOT NULL,
-    restaurant_id VARCHAR(36) NOT NULL,
+    id VARCHAR(255) PRIMARY KEY,
+    order_id VARCHAR(255) NOT NULL,
+    restaurant_id VARCHAR(255) NOT NULL,
     status VARCHAR(50) NOT NULL,
     reject_reason VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -46,8 +46,8 @@ CREATE TABLE IF NOT EXISTS tickets (
 
 CREATE TABLE IF NOT EXISTS ticket_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    ticket_id VARCHAR(36) NOT NULL,
-    product_id VARCHAR(36) NOT NULL,
+    ticket_id VARCHAR(255) NOT NULL,
+    product_id VARCHAR(255) NOT NULL,
     name VARCHAR(255) NOT NULL,
     quantity INT NOT NULL,
     FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
@@ -56,10 +56,10 @@ CREATE TABLE IF NOT EXISTS ticket_items (
 CREATE TABLE IF NOT EXISTS outbox_messages (
     id CHAR(36) PRIMARY KEY,
     aggregate_type VARCHAR(100) NOT NULL,
-    aggregate_id CHAR(36) NOT NULL,
+    aggregate_id VARCHAR(255) NOT NULL,
     event_type VARCHAR(100) NOT NULL,
     payload JSON NOT NULL,
-    correlation_id CHAR(36) NOT NULL,
+    correlation_id VARCHAR(255) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     published_at TIMESTAMP NULL
 );

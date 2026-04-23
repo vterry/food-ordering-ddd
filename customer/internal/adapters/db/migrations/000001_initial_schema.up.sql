@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS customers (
-    id VARCHAR(36) PRIMARY KEY,
+    id VARCHAR(255) PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     email VARCHAR(150) NOT NULL UNIQUE,
     phone VARCHAR(20) NOT NULL,
@@ -8,8 +8,8 @@ CREATE TABLE IF NOT EXISTS customers (
 );
 
 CREATE TABLE IF NOT EXISTS addresses (
-    id VARCHAR(36) PRIMARY KEY,
-    customer_id VARCHAR(36) NOT NULL,
+    id VARCHAR(255) PRIMARY KEY,
+    customer_id VARCHAR(255) NOT NULL,
     street VARCHAR(255) NOT NULL,
     city VARCHAR(100) NOT NULL,
     zip_code VARCHAR(20) NOT NULL,
@@ -20,15 +20,15 @@ CREATE TABLE IF NOT EXISTS addresses (
 );
 
 CREATE TABLE IF NOT EXISTS carts (
-    customer_id VARCHAR(36) PRIMARY KEY,
-    restaurant_id VARCHAR(36),
+    customer_id VARCHAR(255) PRIMARY KEY,
+    restaurant_id VARCHAR(255),
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS cart_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    customer_id VARCHAR(36) NOT NULL,
-    product_id VARCHAR(36) NOT NULL,
+    customer_id VARCHAR(255) NOT NULL,
+    product_id VARCHAR(255) NOT NULL,
     name VARCHAR(255) NOT NULL,
     price_amount DECIMAL(10,2) NOT NULL,
     price_currency VARCHAR(3) NOT NULL,

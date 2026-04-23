@@ -1,6 +1,6 @@
 module github.com/vterry/food-project/customer
 
-go 1.25.5
+go 1.24.0
 
 replace github.com/vterry/food-project/common => ../common
 

@@ -11,14 +11,16 @@ import (
 )
 
 type paymentService struct {
-	repo    ports.PaymentRepository
-	gateway ports.PaymentGateway
+	repo      ports.PaymentRepository
+	gateway   ports.PaymentGateway
+	publisher ports.DomainEventPublisher
 }
 
-func NewPaymentService(repo ports.PaymentRepository, gateway ports.PaymentGateway) *paymentService {
+func NewPaymentService(repo ports.PaymentRepository, gateway ports.PaymentGateway, publisher ports.DomainEventPublisher) *paymentService {
 	return &paymentService{
-		repo:    repo,
-		gateway: gateway,
+		repo:      repo,
+		gateway:   gateway,
+		publisher: publisher,
 	}
 }
 
@@ -49,6 +51,11 @@ func (s *paymentService) Authorize(ctx context.Context, cmd ports.AuthorizeComma
 		return nil, fmt.Errorf("failed to save payment: %w", err)
 	}
 
+	// 4. Direct publish (until outbox worker is implemented in Phase 6)
+	if err := s.publisher.Publish(ctx, p.PullEvents()...); err != nil {
+		slog.Warn("Failed to publish payment events", "error", err)
+	}
+
 	return p, nil
 }
 
@@ -73,7 +80,16 @@ func (s *paymentService) Capture(ctx context.Context, cmd ports.CaptureCommand) 
 		return err
 	}
 
-	return s.repo.Save(ctx, p)
+	if err := s.repo.Save(ctx, p); err != nil {
+		return err
+	}
+
+	// Direct publish (until outbox worker is implemented in Phase 6)
+	if err := s.publisher.Publish(ctx, p.PullEvents()...); err != nil {
+		slog.Warn("Failed to publish payment events", "error", err)
+	}
+
+	return nil
 }
 
 func (s *paymentService) Refund(ctx context.Context, cmd ports.RefundCommand) error {
@@ -94,7 +110,15 @@ func (s *paymentService) Refund(ctx context.Context, cmd ports.RefundCommand) er
 		return err
 	}
 
-	return s.repo.Save(ctx, p)
+	if err := s.repo.Save(ctx, p); err != nil {
+		return err
+	}
+
+	if err := s.publisher.Publish(ctx, p.PullEvents()...); err != nil {
+		slog.Warn("Failed to publish payment events", "error", err)
+	}
+
+	return nil
 }
 
 func (s *paymentService) Release(ctx context.Context, cmd ports.ReleaseCommand) error {
@@ -115,7 +139,15 @@ func (s *paymentService) Release(ctx context.Context, cmd ports.ReleaseCommand) 
 		return err
 	}
 
-	return s.repo.Save(ctx, p)
+	if err := s.repo.Save(ctx, p); err != nil {
+		return err
+	}
+
+	if err := s.publisher.Publish(ctx, p.PullEvents()...); err != nil {
+		slog.Warn("Failed to publish payment events", "error", err)
+	}
+
+	return nil
 }
 
 func (s *paymentService) GetPayment(ctx context.Context, id string) (*payment.Payment, error) {

@@ -1,10 +1,10 @@
 CREATE TABLE IF NOT EXISTS outbox_messages (
     id CHAR(36) PRIMARY KEY,
     aggregate_type VARCHAR(100) NOT NULL,
-    aggregate_id VARCHAR(36) NOT NULL,
+    aggregate_id VARCHAR(255) NOT NULL,
     event_type VARCHAR(100) NOT NULL,
     payload JSON NOT NULL,
-    correlation_id VARCHAR(36) NOT NULL,
+    correlation_id VARCHAR(255) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     published_at TIMESTAMP NULL
 );

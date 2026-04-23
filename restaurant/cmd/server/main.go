@@ -1,4 +1,5 @@
 package main
+
 import (
 	"context"
 	"log/slog"
@@ -11,6 +12,7 @@ import (
 
 	"google.golang.org/grpc"
 
+	"github.com/vterry/food-project/common/pkg/outbox"
 	pb "github.com/vterry/food-project/restaurant/api/proto"
 	"github.com/vterry/food-project/restaurant/internal/adapters/api"
 	apigen "github.com/vterry/food-project/restaurant/internal/adapters/api/generated"
@@ -19,7 +21,7 @@ import (
 	"github.com/vterry/food-project/restaurant/internal/adapters/db/repository"
 	"github.com/vterry/food-project/restaurant/internal/adapters/messaging"
 	"github.com/vterry/food-project/restaurant/internal/core/services"
-	)
+)
 
 const (
 	defaultHTTPPort = "8081"
@@ -53,11 +55,20 @@ func main() {
 	querySvc := services.NewRestaurantQueryService(restRepo, menuRepo)
 
 	// Messaging
+	publisher, err := messaging.NewRabbitMQPublisher(mqURL, "restaurant-service")
+	if err != nil {
+		slog.Error("failed to connect to rabbitmq publisher", "error", err)
+		os.Exit(1)
+	}
+
+	// Outbox Relay (using restRepo which implements outbox.Repository)
+	relay := outbox.NewRelay(restRepo, publisher, 500*time.Millisecond, 50)
+	go relay.Start(context.Background())
+
 	consumer, err := messaging.NewRabbitMQConsumer(mqURL, ticketSvc)
 	if err != nil {
 		slog.Warn("failed to connect to rabbitmq consumer", "error", err)
 	} else {
-		defer consumer.Close()
 		if err := consumer.Start(context.Background()); err != nil {
 			slog.Warn("failed to start rabbitmq consumer", "error", err)
 		}

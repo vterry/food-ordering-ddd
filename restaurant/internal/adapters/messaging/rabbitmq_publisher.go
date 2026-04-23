@@ -81,6 +81,23 @@ func (p *RabbitMQPublisher) Publish(ctx context.Context, events ...base.DomainEv
 	return nil
 }
 
+func (p *RabbitMQPublisher) PublishRaw(ctx context.Context, eventType string, correlationID string, payload []byte) error {
+	return p.channel.PublishWithContext(
+		ctx,
+		"restaurant.events",
+		eventType,
+		false,
+		false,
+		amqp.Publishing{
+			ContentType: "application/json",
+			Headers: amqp.Table{
+				"correlation_id": correlationID,
+			},
+			Body: payload,
+		},
+	)
+}
+
 func (p *RabbitMQPublisher) Close() error {
 	if p.channel != nil {
 		p.channel.Close()

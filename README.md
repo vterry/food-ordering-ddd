@@ -2,6 +2,11 @@
 
 Este é um projeto de referência de uma plataforma de delivery de comida, desenvolvido como monorepo utilizando **Go**. O objetivo principal é demonstrar a aplicação prática de conceitos avançados de arquitetura distribuída, com foco em **Domain-Driven Design (DDD)**, **Event-Driven Architecture (EDA)** e padrões de resiliência.
 
+# Motivação
+
+
+
+
 ---
 
 ## 🚀 Conceitos Core
@@ -85,3 +90,7 @@ docker-compose up -d
 
 ---
 *Desenvolvido como um projeto de referência em Go.*
+
+# O que acredito ter feito bem:
+
+# O que poderia ser melhorado:

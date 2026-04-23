@@ -1,0 +1,119 @@
+openapi: 3.0.3
+info:
+  title: Ordering Service API
+  version: 1.0.0
+servers:
+  - url: /api/v1
+paths:
+  /orders:
+    post:
+      summary: Create a new order
+      operationId: createOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+      responses:
+        '202':
+          description: Order creation initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderCreatedResponse'
+        '400':
+          description: Invalid request
+  /orders/{id}:
+    get:
+      summary: Get order details and status
+      operationId: getOrder
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Order details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '404':
+          description: Order not found
+  /orders/{id}/cancel:
+    post:
+      summary: Cancel an order
+      operationId: cancelOrder
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Cancellation initiated
+        '400':
+          description: Cannot cancel order in current state
+components:
+  schemas:
+    CreateOrderRequest:
+      type: object
+      required:
+        - customer_id
+        - restaurant_id
+        - items
+        - card_token
+      properties:
+        customer_id:
+          type: string
+        restaurant_id:
+          type: string
+        card_token:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+    OrderItem:
+      type: object
+      required:
+        - product_id
+        - name
+        - quantity
+        - price
+      properties:
+        product_id:
+          type: string
+        name:
+          type: string
+        quantity:
+          type: integer
+        price:
+          type: number
+    OrderCreatedResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+    OrderResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        customer_id:
+          type: string
+        restaurant_id:
+          type: string
+        status:
+          type: string
+        total_amount:
+          type: number
+        created_at:
+          type: string
+          format: date-time

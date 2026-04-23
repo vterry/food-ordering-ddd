@@ -20,9 +20,9 @@ import (
 
 func main() {
 	// Configuration (In a real app, use env vars)
-	dbDSN := os.Getenv("DB_DSN")
+	dbDSN := os.Getenv("MYSQL_DSN")
 	if dbDSN == "" {
-		dbDSN = "root:root@tcp(localhost:3306)/payment?parseTime=true"
+		dbDSN = "root:root@tcp(localhost:3306)/food_project?parseTime=true"
 	}
 	rabbitURL := os.Getenv("RABBITMQ_URL")
 	if rabbitURL == "" {
@@ -38,9 +38,14 @@ func main() {
 
 	repo := repository.NewPaymentRepository(database)
 	gateway := external.NewMockGateway()
+	publisher, err := messaging.NewRabbitMQPublisher(rabbitURL, "payment-service")
+	if err != nil {
+		log.Fatalf("Failed to initialize RabbitMQ publisher: %v", err)
+	}
+	defer publisher.Close()
 
 	// 2. Application Service
-	paymentService := services.NewPaymentService(repo, gateway)
+	paymentService := services.NewPaymentService(repo, gateway, publisher)
 
 	// 3. Inbound Adapters (API & Messaging)
 	paymentHandler := api.NewPaymentHandler(paymentService)
@@ -57,8 +62,12 @@ func main() {
 	}
 
 	// 4. Start Server
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8082"
+	}
 	go func() {
-		if err := server.Start(":8082"); err != nil && err != http.ErrServerClosed {
+		if err := server.Start(":" + port); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Failed to start server: %v", err)
 		}
 	}()

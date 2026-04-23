@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"time"
+	"github.com/vterry/food-project/common/pkg/domain/base"
 )
 
 var (
@@ -17,7 +18,7 @@ type Payment struct {
 	orderID   string
 	amount    int64 // in cents
 	status    Status
-	events    []interface{}
+	events    []base.DomainEvent
 	updatedAt time.Time
 }
 
@@ -57,10 +58,10 @@ func (p *Payment) Authorize() error {
 	p.status = StatusAuthorized
 	p.updatedAt = time.Now()
 	p.addEvent(PaymentAuthorized{
-		PaymentID:  p.id,
-		OrderID:    p.orderID,
-		Amount:     p.amount,
-		OccurredAt: p.updatedAt,
+		PaymentID:      p.id,
+		OrderID:        p.orderID,
+		Amount:         p.amount,
+		OccurredAtTime: p.updatedAt,
 	})
 	return nil
 }
@@ -76,10 +77,10 @@ func (p *Payment) FailAuthorization(reason string) error {
 	p.status = StatusAuthorizationFailed
 	p.updatedAt = time.Now()
 	p.addEvent(PaymentAuthorizationFailed{
-		PaymentID:  p.id,
-		OrderID:    p.orderID,
-		Reason:     reason,
-		OccurredAt: p.updatedAt,
+		PaymentID:      p.id,
+		OrderID:        p.orderID,
+		Reason:         reason,
+		OccurredAtTime: p.updatedAt,
 	})
 	return nil
 }
@@ -95,10 +96,10 @@ func (p *Payment) Capture() error {
 	p.status = StatusCaptured
 	p.updatedAt = time.Now()
 	p.addEvent(PaymentCaptured{
-		PaymentID:  p.id,
-		OrderID:    p.orderID,
-		Amount:     p.amount,
-		OccurredAt: p.updatedAt,
+		PaymentID:      p.id,
+		OrderID:        p.orderID,
+		Amount:         p.amount,
+		OccurredAtTime: p.updatedAt,
 	})
 	return nil
 }
@@ -114,9 +115,9 @@ func (p *Payment) Release() error {
 	p.status = StatusReleased
 	p.updatedAt = time.Now()
 	p.addEvent(PaymentReleased{
-		PaymentID:  p.id,
-		OrderID:    p.orderID,
-		OccurredAt: p.updatedAt,
+		PaymentID:      p.id,
+		OrderID:        p.orderID,
+		OccurredAtTime: p.updatedAt,
 	})
 	return nil
 }
@@ -132,10 +133,10 @@ func (p *Payment) Refund() error {
 	p.status = StatusRefunded
 	p.updatedAt = time.Now()
 	p.addEvent(PaymentRefunded{
-		PaymentID:  p.id,
-		OrderID:    p.orderID,
-		Amount:     p.amount,
-		OccurredAt: p.updatedAt,
+		PaymentID:      p.id,
+		OrderID:        p.orderID,
+		Amount:         p.amount,
+		OccurredAtTime: p.updatedAt,
 	})
 	return nil
 }
@@ -147,13 +148,18 @@ func (p *Payment) OrderID() string { return p.orderID }
 func (p *Payment) Amount() int64   { return p.amount }
 func (p *Payment) Status() Status  { return p.status }
 
-func (p *Payment) addEvent(e interface{}) {
+func (p *Payment) addEvent(e base.DomainEvent) {
 	p.events = append(p.events, e)
 }
 
 // PullEvents returns all collected domain events and clears the internal slice.
-func (p *Payment) PullEvents() []interface{} {
+func (p *Payment) PullEvents() []base.DomainEvent {
 	events := p.events
 	p.events = nil
 	return events
+}
+
+// GetEvents returns all collected domain events without clearing them.
+func (p *Payment) GetEvents() []base.DomainEvent {
+	return p.events
 }

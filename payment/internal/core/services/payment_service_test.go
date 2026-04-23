@@ -13,7 +13,7 @@ func TestPaymentService_Authorize(t *testing.T) {
 	t.Run("successful authorization", func(t *testing.T) {
 		repo := NewMockPaymentRepo()
 		gateway := &MockGateway{}
-		svc := NewPaymentService(repo, gateway)
+		svc := NewPaymentService(repo, gateway, &MockPublisher{})
 
 		cmd := ports.AuthorizeCommand{
 			OrderID: "ord-1",
@@ -37,7 +37,7 @@ func TestPaymentService_Authorize(t *testing.T) {
 	t.Run("gateway failure", func(t *testing.T) {
 		repo := NewMockPaymentRepo()
 		gateway := &MockGateway{AuthorizeErr: errors.New("gateway rejected")}
-		svc := NewPaymentService(repo, gateway)
+		svc := NewPaymentService(repo, gateway, &MockPublisher{})
 
 		cmd := ports.AuthorizeCommand{
 			OrderID: "ord-2",
@@ -65,7 +65,7 @@ func TestPaymentService_Capture(t *testing.T) {
 		repo.SaveCalled = 0 // Reset counter
 
 		gateway := &MockGateway{}
-		svc := NewPaymentService(repo, gateway)
+		svc := NewPaymentService(repo, gateway, &MockPublisher{})
 
 		err := svc.Capture(context.Background(), ports.CaptureCommand{PaymentID: "p1"})
 		if err != nil {
@@ -79,7 +79,7 @@ func TestPaymentService_Capture(t *testing.T) {
 
 	t.Run("payment not found", func(t *testing.T) {
 		repo := NewMockPaymentRepo()
-		svc := NewPaymentService(repo, &MockGateway{})
+		svc := NewPaymentService(repo, &MockGateway{}, &MockPublisher{})
 
 		err := svc.Capture(context.Background(), ports.CaptureCommand{PaymentID: "unknown"})
 		if err == nil {

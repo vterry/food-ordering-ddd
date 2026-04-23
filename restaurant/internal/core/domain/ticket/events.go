@@ -7,8 +7,8 @@ import (
 
 type TicketConfirmedEvent struct {
 	base.BaseDomainEvent
-	TicketID vo.ID
-	OrderID  vo.ID
+	TicketID vo.ID `json:"ticket_id"`
+	OrderID  vo.ID `json:"order_id"`
 }
 
 func NewTicketConfirmedEvent(ticketID, orderID vo.ID) TicketConfirmedEvent {
@@ -25,9 +25,9 @@ func (e TicketConfirmedEvent) EventType() string {
 
 type TicketRejectedEvent struct {
 	base.BaseDomainEvent
-	TicketID vo.ID
-	OrderID  vo.ID
-	Reason   string
+	TicketID vo.ID  `json:"ticket_id"`
+	OrderID  vo.ID  `json:"order_id"`
+	Reason   string `json:"reason"`
 }
 
 func NewTicketRejectedEvent(ticketID, orderID vo.ID, reason string) TicketRejectedEvent {
@@ -45,8 +45,8 @@ func (e TicketRejectedEvent) EventType() string {
 
 type TicketReadyEvent struct {
 	base.BaseDomainEvent
-	TicketID vo.ID
-	OrderID  vo.ID
+	TicketID vo.ID `json:"ticket_id"`
+	OrderID  vo.ID `json:"order_id"`
 }
 
 func NewTicketReadyEvent(ticketID, orderID vo.ID) TicketReadyEvent {
@@ -63,8 +63,8 @@ func (e TicketReadyEvent) EventType() string {
 
 type TicketCancelledEvent struct {
 	base.BaseDomainEvent
-	TicketID vo.ID
-	OrderID  vo.ID
+	TicketID vo.ID `json:"ticket_id"`
+	OrderID  vo.ID `json:"order_id"`
 }
 
 func NewTicketCancelledEvent(ticketID, orderID vo.ID) TicketCancelledEvent {

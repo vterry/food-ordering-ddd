@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"github.com/vterry/food-project/common/pkg/domain/base"
 	"github.com/vterry/food-project/payment/internal/core/domain/payment"
 )
 
@@ -65,4 +66,15 @@ func (m *MockGateway) Refund(ctx context.Context, p *payment.Payment) error {
 
 func (m *MockGateway) Release(ctx context.Context, p *payment.Payment) error {
 	return m.ReleaseErr
+}
+
+type MockPublisher struct {
+	PublishCalled int
+	Events        []base.DomainEvent
+}
+
+func (m *MockPublisher) Publish(ctx context.Context, events ...base.DomainEvent) error {
+	m.PublishCalled++
+	m.Events = append(m.Events, events...)
+	return nil
 }

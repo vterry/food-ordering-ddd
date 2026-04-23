@@ -66,7 +66,7 @@ func (r *paymentRepository) Save(ctx context.Context, p *payment.Payment) error 
 	}
 
 	// Save Outbox messages
-	events := p.PullEvents()
+	events := p.GetEvents()
 	for _, event := range events {
 		payload, err := json.Marshal(event)
 		if err != nil {

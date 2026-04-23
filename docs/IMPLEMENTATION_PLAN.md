@@ -754,6 +754,26 @@ payment/internal/core/domain/payment/
 
 ---
 
+### Sprint 7.3 — Validação Manual (Roteiro)
+
+| Item | Detalhe |
+*   **Referência** | [manual_testing_guide.md](file:///home/souza/.gemini/antigravity/brain/4eb32fbb-f252-401a-bc83-5565603cba49/manual_testing_guide.md) |
+
+**Entregáveis:**
+
+- [ ] Execução do roteiro de teste manual para validação visual e de logs.
+- [ ] Validação de cada cenário:
+  - Happy Path (Criação -> Pagamento -> Cozinha -> Entrega Mock).
+  - Compensação por recusa do restaurante.
+  - Cancelamento pelo cliente.
+
+**Critérios de Aceite:**
+1. Todos os passos do roteiro executados com sucesso.
+2. Logs do `Ordering Service` confirmam as transições de estado da Saga.
+3. Banco de dados `saga_state` reflete o progresso em cada passo.
+
+---
+
 ## Fase 8 — Observabilidade
 
 > **Requisitos cobertos:** RNF-11, RNF-12, RNF-13  
