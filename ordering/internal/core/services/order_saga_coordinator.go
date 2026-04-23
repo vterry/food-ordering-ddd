@@ -160,8 +160,13 @@ func (c *OrderSagaCoordinator) HandlePaymentCaptured(ctx context.Context, orderI
 
 	// Publish ScheduleDelivery command
 	payload := map[string]interface{}{
-		"order_id": orderID,
-		// In a real system, we would pass restaurant and customer addresses
+		"order_id":      orderID,
+		"customer_id":   o.CustomerID().String(),
+		"restaurant_id": o.RestaurantID().String(),
+		"address": map[string]interface{}{
+			"street": o.DeliveryAddress(), // Using the full address as street for mock simplicity
+			"city":   "MockCity",
+		},
 	}
 
 	return c.publisher.PublishCommand(ctx, "delivery.commands", "delivery.command.schedule", payload)
@@ -224,11 +229,9 @@ func (c *OrderSagaCoordinator) loadOrderAndSaga(ctx context.Context, orderID str
 }
 
 func (c *OrderSagaCoordinator) saveOrderAndSaga(ctx context.Context, o *order.Order, s *saga.SagaState) error {
-	// We should ideally do this in a single transaction, but since repositories are abstracted,
-	// we assume the implementation handles it or we accept eventual consistency here if 
-	// we use idempotent consumers.
-	
 	// Implementation note: The persistence layer should handle the version check for 'o'
+	// o.Version() was already incremented by transitionTo. 
+	// The UpdateWithVersion expects the version currently in DB (which is o.Version() - 1).
 	if err := c.orderRepo.UpdateWithVersion(ctx, o, o.Version()-1); err != nil {
 		return fmt.Errorf("failed to update order with version check: %w", err)
 	}

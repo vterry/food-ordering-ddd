@@ -10,9 +10,9 @@ echo "Starting services..."
 docker compose -f docker-compose.test.yml up -d --build
 
 # Wait for services to be ready
-echo "Waiting for services to be ready..."
-# Wait more for RabbitMQ and MySQL to fully initialize and apps to connect/migrate
-sleep 20
+echo "Waiting for services to be ready (via healthchecks)..."
+# O sleep 20 foi removido porque o test-runner no docker-compose.test.yml 
+# agora depende da condição 'service_healthy' de todos os serviços.
 
 # Run tests
 echo "Running E2E tests..."

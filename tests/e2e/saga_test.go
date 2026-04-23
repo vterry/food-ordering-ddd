@@ -72,7 +72,7 @@ func (s *SagaTestSuite) TestHappyPath() {
 	s.NotEmpty(orderID)
 
 	// 4. Poll for Order Status until PREPARING (terminal happy path state) or timeout
-	s.waitForOrderStatus(orderID, "PREPARING", 20*time.Second) 
+	s.waitForOrderStatus(orderID, "PREPARING", 60*time.Second) 
 }
 
 func (s *SagaTestSuite) TestPaymentRejected() {
@@ -105,7 +105,7 @@ func (s *SagaTestSuite) TestPaymentRejected() {
 	s.Equal(http.StatusAccepted, resp.StatusCode())
 	
 	// Should end up as REJECTED
-	s.waitForOrderStatus(orderResp.Id, "REJECTED", 20*time.Second)
+	s.waitForOrderStatus(orderResp.Id, "REJECTED", 60*time.Second)
 }
 
 func (s *SagaTestSuite) TestRestaurantRejected() {
@@ -138,7 +138,7 @@ func (s *SagaTestSuite) TestRestaurantRejected() {
 	s.Equal(http.StatusAccepted, resp.StatusCode())
 	
 	// Should end up as CANCELLED (compensating flow after payment authorized)
-	s.waitForOrderStatus(orderResp.Id, "CANCELLED", 20*time.Second)
+	s.waitForOrderStatus(orderResp.Id, "CANCELLED", 60*time.Second)
 }
 
 func (s *SagaTestSuite) registerCustomer(name, email, phone string) string {

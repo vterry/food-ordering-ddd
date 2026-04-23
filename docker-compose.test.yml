@@ -41,6 +41,11 @@ services:
       MYSQL_DSN: "root:root@tcp(mysql:3306)/food_project?parseTime=true"
       RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672/"
       RESTAURANT_GRPC_ADDR: "restaurant-service:50052"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
 
   restaurant-service:
     build:
@@ -57,6 +62,11 @@ services:
       PORT: 8081
       MYSQL_DSN: "root:root@tcp(mysql:3306)/food_project?parseTime=true"
       RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672/"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8081/health"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
 
   payment-service:
     build:
@@ -73,6 +83,11 @@ services:
       PORT: 8082
       MYSQL_DSN: "root:root@tcp(mysql:3306)/food_project?parseTime=true"
       RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672/"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8082/health/ready"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
 
   ordering-service:
     build:
@@ -90,6 +105,11 @@ services:
       MYSQL_DSN: "root:root@tcp(mysql:3306)/food_project?parseTime=true"
       RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672/"
       CUSTOMER_GRPC_ADDR: "customer-service:50051"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8083/health"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
 
   delivery-service:
     build:
@@ -106,6 +126,11 @@ services:
       PORT: 8084
       MYSQL_DSN: "root:root@tcp(mysql:3306)/food_project?parseTime=true"
       RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672/"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8084/health"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
 
   test-runner:
     image: golang:alpine
@@ -114,15 +139,15 @@ services:
       - .:/app
     depends_on:
       customer-service:
-        condition: service_started
+        condition: service_healthy
       restaurant-service:
-        condition: service_started
+        condition: service_healthy
       payment-service:
-        condition: service_started
+        condition: service_healthy
       ordering-service:
-        condition: service_started
+        condition: service_healthy
       delivery-service:
-        condition: service_started
+        condition: service_healthy
     command: ["go", "test", "-v", "./tests/e2e/..."]
     environment:
       CUSTOMER_API: "http://customer-service:8080"
